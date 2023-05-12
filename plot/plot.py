@@ -20,7 +20,7 @@ def plot_all_metrics(data_dict, output_dir):
 
     time_axis = np.arange(data_dict[constants.KEY_OBSERVATIONS])
     metric_data = data_dict[constants.KEY_METRICS]
-    fig, axs = plt.subplots(len(metric_data), 1, sharex="all", figsize=(8, 12))
+    fig, axs = plt.subplots(len(metric_data), 1, sharex="all", figsize=(8, 4 * len(metric_data)))
 
     i = 0
 
@@ -30,4 +30,6 @@ def plot_all_metrics(data_dict, output_dir):
         axs[i].plot(time_axis, metric_values)
         i = i + 1
 
-    plt.savefig(os.path.join(output_dir, "all_metrics.png"))
+    output_fname = os.path.join(output_dir, "all_metrics.png")
+    plt.savefig(output_fname)
+    print(f"wrote '{output_fname}'")
