@@ -5,11 +5,11 @@ import os
 from constants import constants
 
 
-def plot_all_metrics(metrics_dict, output_dir):
+def plot_all_metrics(data_dict, output_dir):
     """
     plots each metric in the input dict, generating an image file for each in the output directory
 
-    :param metrics_dict: dict with format {
+    :param data_dict: dict with format {
         KEY_GRANULARITY: granularity,
         KEY_OBSERVATIONS: observations,
         KEY_METRICS: { metric_name: [ metric values ], ... }
@@ -18,15 +18,15 @@ def plot_all_metrics(metrics_dict, output_dir):
     :return: n/a
     """
 
-    time_axis = np.arange(metrics_dict[constants.KEY_OBSERVATIONS])
-    metric_data = metrics_dict[constants.KEY_METRICS]
+    time_axis = np.arange(data_dict[constants.KEY_OBSERVATIONS])
+    metric_data = data_dict[constants.KEY_METRICS]
     fig, axs = plt.subplots(len(metric_data), 1, sharex="all", figsize=(8, 12))
 
     i = 0
 
     for metric_name, metric_values in metric_data.items():
         axs[i].set_title(metric_name)
-        axs[i].set_xlabel(f"Time({metrics_dict[constants.KEY_GRANULARITY]})")
+        axs[i].set_xlabel(f"Time({data_dict[constants.KEY_GRANULARITY]})")
         axs[i].plot(time_axis, metric_values)
         i = i + 1
 
