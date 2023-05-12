@@ -30,6 +30,9 @@ def plot_all_metrics(data_dict, output_dir):
         axs[i].plot(time_axis, metric_values)
         i = i + 1
 
+    # tight_layout will space the charts out evenly, vertically
+    fig.tight_layout()
+
     output_fname = os.path.join(output_dir, "all_metrics.png")
     plt.savefig(output_fname)
     print(f"wrote '{output_fname}'")
