@@ -1,3 +1,4 @@
+import click
 import numpy as np
 import random
 
@@ -28,3 +29,16 @@ def test_plot_all_metrics(output_dir):
         constants.KEY_METRICS: metric_names_and_values
     }
     plot.plot_all_metrics(metrics_dict, output_dir)
+
+
+@click.command()
+@click.option("--routine", required=True, help="routine name")
+@click.option("--output_dir", help="output_dir arg for test_plot_all_metrics")
+def run(routine, **kwargs):
+    assert "test_plot_all_metrics" == routine
+    assert "output_dir" in kwargs
+    test_plot_all_metrics(kwargs["output_dir"])
+
+
+if __name__ == "__main__":
+    run()
