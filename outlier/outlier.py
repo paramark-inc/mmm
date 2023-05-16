@@ -12,12 +12,8 @@ def print_outliers(metric_data):
         mean = df['values'].mean()
         stddev = df['values'].std()
 
-        outlier_gt_filt = df['values'] > (mean + 2 * stddev)
-        if mean > (2 * stddev):
-            outlier_lt_filt = df['values'] < (mean - 2 * stddev)
-            outliers = df['values'][outlier_gt_filt | outlier_lt_filt]
-        else:
-            outliers = df['values'][outlier_gt_filt]
+        # mean and stddev are floats so this is a floating point operation
+        outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
         print(f"outlier data points for {metric_name} (mean={mean} stddev={stddev})")
         for i, v in outliers.items():
