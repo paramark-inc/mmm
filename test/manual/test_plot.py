@@ -35,6 +35,11 @@ def test_plot_all_metrics(output_dir):
 @click.option("--routine", required=True, help="routine name")
 @click.option("--output_dir", help="output_dir arg for test_plot_all_metrics")
 def run(routine, **kwargs):
+    """
+    :param routine: routine name
+    :param kwargs: routine arguments (provided as kwargs for extensibility)
+    :return:
+    """
     assert "test_plot_all_metrics" == routine
     assert "output_dir" in kwargs
     test_plot_all_metrics(kwargs["output_dir"])
