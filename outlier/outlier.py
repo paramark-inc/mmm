@@ -15,6 +15,6 @@ def print_outliers(metric_data):
         # mean and stddev are floats so this is a floating point operation
         outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
-        print(f"outlier data points for {metric_name} (mean={mean:.2f} stddev={stddev:.2f})")
+        print(f"outlier data points for {metric_name} (mean={mean:,.2f} stddev={stddev:,.2f})")
         for i, v in outliers.items():
-            print(f"  index={i:4d} value={v:10d}")
+            print(f"  index={i:4d} value={v:14,d}")
