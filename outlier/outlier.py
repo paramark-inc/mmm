@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -17,4 +18,5 @@ def print_outliers(metric_data):
 
         print(f"outlier data points for {metric_name} (mean={mean:,.2f} stddev={stddev:,.2f})")
         for i, v in outliers.items():
-            print(f"  index={i:4d} value={v:14,d}")
+            stddevs_from_mean = np.absolute(v - mean) / stddev
+            print(f"  index={i:4d} value={v:14,d} stddevs from mean={stddevs_from_mean:.2f}")
