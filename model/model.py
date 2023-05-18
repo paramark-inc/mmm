@@ -1,12 +1,9 @@
-import numpy as np
-
-
 class InputData:
     """
     encapsulation of data fed into the marketing mix model - both the marketing metrics and the sales metrics
 
     all 2-dimensional arrays have time (day or week number) as the first index and channel as the second index
-    all numbers are numpy.uint64, all arrays of numbers are numpy.array and numpy.ndarray
+    all numbers are numpy.uint64, all arrays of numbers are numpy array and numpy ndarray
 
     all values are true values (i.e. not scaled down for feeding into the MMM)
     """
