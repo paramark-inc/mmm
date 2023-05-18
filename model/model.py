@@ -9,7 +9,7 @@ class InputData:
     """
 
     def __init__(self, date_strs, time_granularity, media_data, media_costs_per_unit, media_names, extra_features_data,
-                 extra_feature_names,
+                 extra_features_names,
                  target_data,
                  target_name):
         """
@@ -19,7 +19,7 @@ class InputData:
         :param media_costs_per_unit: 1-d array of average media costs per unit [channel]
         :param media_names: 1-d array of media channel names
         :param extra_features_data: 2-d array of extra feature values [time, channel]
-        :param extra_feature_names: 1-d array of extra feature names
+        :param extra_features_names: 1-d array of extra feature names
         :param target_data: 1-d array of target metric values
         :param target_name: name of target metric
         """
@@ -29,6 +29,6 @@ class InputData:
         self.media_costs_per_unit = media_costs_per_unit
         self.media_channel_names = media_names
         self.extra_features_data = extra_features_data
-        self.extra_features_names = extra_feature_names
+        self.extra_features_names = extra_features_names
         self.target_data = target_data
         self.target_name = target_name
