@@ -2,9 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-from constants import constants
-from model.model import InputData
-
 
 def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, values):
     axs[idx].set_title(chart_name)
@@ -16,7 +13,7 @@ def plot_all_metrics(input_data, output_dir):
     """
     plots each metric in the input data object, generating an image file for each in the output directory
 
-    :param input_data InputData model
+    :param input_data: InputData model
     :param output_dir: directory to write image files to each
     :return: n/a
     """
@@ -24,8 +21,12 @@ def plot_all_metrics(input_data, output_dir):
     time_axis = np.arange(input_data.media_data.shape[0])
 
     # add 1 for the target metric
-    num_metrics = input_data.media_data.shape[1] + \
-                  input_data.media_costs_per_unit.shape[0] + input_data.extra_features_data.shape[1] + 1
+    num_metrics = (
+            input_data.media_data.shape[1] +
+            input_data.media_costs_per_unit.shape[0] +
+            input_data.extra_features_data.shape[1] +
+            1
+    )
     fig, axs = plt.subplots(num_metrics, 1, sharex="all", figsize=(8, 4 * num_metrics))
 
     charts = []
