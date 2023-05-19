@@ -34,6 +34,7 @@ def test_plot_all_metrics(output_dir):
         target_data=target_values,
         target_name="Sales"
     )
+    input_data.dump()
 
     plot_all_metrics(input_data, output_dir)
 

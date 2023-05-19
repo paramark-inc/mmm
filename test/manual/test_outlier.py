@@ -41,6 +41,7 @@ def test_print_outliers():
         target_data=target_values,
         target_name="Sales"
     )
+    input_data.dump()
 
     print_outliers(input_data)
 
