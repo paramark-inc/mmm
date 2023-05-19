@@ -11,7 +11,8 @@ def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, values):
 
 def plot_all_metrics(input_data, output_dir):
     """
-    plots each metric in the input data object, generating an image file for each in the output directory
+    plots each metric in the input data object, generating an image file for each in the output directory.
+    note that we are not plotting the costs at present.
 
     :param input_data: InputData model
     :param output_dir: directory to write image files to each
@@ -21,12 +22,7 @@ def plot_all_metrics(input_data, output_dir):
     time_axis = np.arange(input_data.media_data.shape[0])
 
     # add 1 for the target metric
-    num_metrics = (
-            input_data.media_data.shape[1] +
-            input_data.media_costs_per_unit.shape[0] +
-            input_data.extra_features_data.shape[1] +
-            1
-    )
+    num_metrics = input_data.media_data.shape[1] + input_data.extra_features_data.shape[1] + 1
     fig, axs = plt.subplots(num_metrics, 1, sharex="all", figsize=(8, 4 * num_metrics))
 
     charts = []
@@ -34,11 +30,6 @@ def plot_all_metrics(input_data, output_dir):
     for media_idx in range(input_data.media_data.shape[1]):
         values = input_data.media_data[:, media_idx]
         chart_name = f"{input_data.media_names[media_idx]} (volume)"
-        charts.append((chart_name, values))
-
-    for media_cost_idx in range(input_data.media_costs_per_unit.shape[0]):
-        values = input_data.media_costs_per_unit[media_cost_idx]
-        chart_name = f"{input_data.media_names[media_cost_idx]} (cost)"
         charts.append((chart_name, values))
 
     for extra_features_idx in range(input_data.extra_features_data.shape[1]):

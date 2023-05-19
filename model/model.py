@@ -1,3 +1,8 @@
+import numpy as np
+
+from constants import constants
+
+
 class InputData:
     """
     encapsulation of data fed into the marketing mix model - both the marketing metrics and the sales metrics
@@ -7,6 +12,40 @@ class InputData:
 
     all values are true values (i.e. not scaled down for feeding into the MMM)
     """
+
+    @staticmethod
+    def _validate(date_strs, time_granularity, media_data, media_costs_per_unit, media_names, extra_features_data,
+                  extra_features_names,
+                  target_data,
+                  target_name):
+        num_observations = date_strs.shape[0]
+
+        assert time_granularity in (constants.GRANULARITY_DAILY, constants.GRANULARITY_DAILY), f"{time_granularity}"
+
+        assert 2 == media_data.ndim, f"{media_data.ndim}"
+        assert num_observations == media_data.shape[0], f"{num_observations} {media_data.shape[0]}"
+        num_channels = media_data.shape[1]
+        assert np.float64 == media_data.dtype, f"{np.float64} {media_data.dtype}"
+
+        assert 1 == media_costs_per_unit.ndim, f"{media_costs_per_unit.ndim}"
+        assert num_channels == media_costs_per_unit.shape[0], f"{num_channels} {media_costs_per_unit.shape[0]}"
+        assert np.float64 == media_costs_per_unit.dtype, f"{np.float64} {media_costs_per_unit.dtype}"
+
+        assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
+
+        assert 2 == extra_features_data.ndim, f"{extra_features_data.ndim}"
+        num_extra_features = extra_features_data.shape[1]
+        if num_extra_features:
+            assert num_observations == extra_features_data.shape[
+                0], f"{num_observations} {extra_features_data.shape[0]}"
+
+        assert num_extra_features == len(extra_features_names), f"{num_extra_features} {len(extra_features_names)}"
+
+        assert 1 == target_data.ndim, f"{target_data.ndim}"
+        assert num_observations == target_data.shape[0], f"{num_observations} {target_data.shape[0]}"
+        assert np.float64 == target_data.dtype, f"{np.float64} {target_data.dtype}"
+
+        assert target_name
 
     def __init__(self, date_strs, time_granularity, media_data, media_costs_per_unit, media_names, extra_features_data,
                  extra_features_names,
@@ -24,6 +63,11 @@ class InputData:
         :param target_data: 1-d array of float64 target metric values
         :param target_name: name of target metric
         """
+        InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
+                            media_costs_per_unit=media_costs_per_unit, media_names=media_names,
+                            extra_features_data=extra_features_data, extra_features_names=extra_features_names,
+                            target_data=target_data, target_name=target_name)
+
         self.date_strs = date_strs
         self.time_granularity = time_granularity
         self.media_data = media_data
