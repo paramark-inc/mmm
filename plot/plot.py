@@ -3,32 +3,53 @@ import numpy as np
 import os
 
 from constants import constants
+from model.model import InputData
 
 
-def plot_all_metrics(data_dict, output_dir):
+def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, values):
+    axs[idx].set_title(chart_name)
+    axs[idx].set_xlabel(f"Time({granularity})")
+    axs[idx].plot(time_axis, values)
+
+
+def plot_all_metrics(input_data, output_dir):
     """
-    plots each metric in the input dict, generating an image file for each in the output directory
+    plots each metric in the input data object, generating an image file for each in the output directory
 
-    :param data_dict: dict with format {
-        KEY_GRANULARITY: granularity,
-        KEY_OBSERVATIONS: observations,
-        KEY_METRICS: { metric_name: [ metric values ], ... }
-    }
+    :param input_data InputData model
     :param output_dir: directory to write image files to each
     :return: n/a
     """
 
-    time_axis = np.arange(data_dict[constants.KEY_OBSERVATIONS])
-    metric_data = data_dict[constants.KEY_METRICS]
-    fig, axs = plt.subplots(len(metric_data), 1, sharex="all", figsize=(8, 4 * len(metric_data)))
+    time_axis = np.arange(input_data.media_data.shape[0])
 
-    i = 0
+    # add 1 for the target metric
+    num_metrics = input_data.media_data.shape[1] + \
+                  input_data.media_costs_per_unit.shape[0] + input_data.extra_features_data.shape[1] + 1
+    fig, axs = plt.subplots(num_metrics, 1, sharex="all", figsize=(8, 4 * num_metrics))
 
-    for metric_name, metric_values in metric_data.items():
-        axs[i].set_title(metric_name)
-        axs[i].set_xlabel(f"Time({data_dict[constants.KEY_GRANULARITY]})")
-        axs[i].plot(time_axis, metric_values)
-        i = i + 1
+    charts = []
+
+    for media_idx in range(input_data.media_data.shape[1]):
+        values = input_data.media_data[:, media_idx]
+        chart_name = f"{input_data.media_names[media_idx]} (volume)"
+        charts.append((chart_name, values))
+
+    for media_cost_idx in range(input_data.media_costs_per_unit.shape[0]):
+        values = input_data.media_costs_per_unit[media_cost_idx]
+        chart_name = f"{input_data.media_names[media_cost_idx]} (cost)"
+        charts.append((chart_name, values))
+
+    for extra_features_idx in range(input_data.extra_features_data.shape[1]):
+        values = input_data.extra_features_data[:, extra_features_idx]
+        chart_name = input_data.extra_features_names[extra_features_idx]
+        charts.append((chart_name, values))
+
+    charts.append((input_data.target_name, input_data.target_data))
+
+    for idx, (chart_name, values) in enumerate(charts):
+        _plot_one_metric(axs=axs, idx=idx, chart_name=chart_name, granularity=input_data.time_granularity,
+                         time_axis=time_axis, values=values)
 
     # tight_layout will space the charts out evenly, vertically
     fig.tight_layout()

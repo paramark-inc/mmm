@@ -3,7 +3,8 @@ import numpy as np
 import random
 
 from constants import constants
-from plot import plot
+from model.model import InputData
+from plot.plot import plot_all_metrics
 
 
 def generate_rand_metric_values(num_observations):
@@ -11,24 +12,30 @@ def generate_rand_metric_values(num_observations):
     for i in range(num_observations):
         a.append(random.randint(1, 1000))
 
-    return np.array(a, dtype=np.uint64)
+    return np.array(a, dtype=np.float64)
 
 
 def test_plot_all_metrics(output_dir):
     num_observations = 10
 
-    metric_names_and_values = {
-        "first metric": generate_rand_metric_values(num_observations),
-        "second metric": generate_rand_metric_values(num_observations),
-        "third metric": generate_rand_metric_values(num_observations)
-    }
+    metric1_values = generate_rand_metric_values(num_observations)
+    metric2_values = generate_rand_metric_values(num_observations)
+    metric3_values = generate_rand_metric_values(num_observations)
+    target_values = generate_rand_metric_values(num_observations)
 
-    metrics_dict = {
-        constants.KEY_GRANULARITY: constants.GRANULARITY_DAILY,
-        constants.KEY_OBSERVATIONS: num_observations,
-        constants.KEY_METRICS: metric_names_and_values
-    }
-    plot.plot_all_metrics(metrics_dict, output_dir)
+    input_data = InputData(
+        date_strs=["1" for o in range(num_observations)],
+        time_granularity=constants.GRANULARITY_DAILY,
+        media_data=np.column_stack((metric1_values, metric2_values, metric3_values)),
+        media_costs_per_unit=np.array([]),
+        media_names=np.array(["metric1", "metric2", "metric3"]),
+        extra_features_data=np.ndarray(shape=(0, 0)),
+        extra_features_names=np.array([]),
+        target_data=target_values,
+        target_name="Sales"
+    )
+
+    plot_all_metrics(input_data, output_dir)
 
 
 @click.command()

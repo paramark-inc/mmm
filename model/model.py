@@ -14,20 +14,21 @@ class InputData:
                  target_name):
         """
         :param date_strs: array of labels for each time series data point
-        :param time_granularity: integer constant describing the granularity of the time series data
-        :param media_data: 2-d array of media data values [time,channel]
-        :param media_costs_per_unit: 1-d array of average media costs per unit [channel]
+        :param time_granularity: string constant describing the granularity of the time series data (
+                                 constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc)
+        :param media_data: 2-d array of float64 media data values [time,channel]
+        :param media_costs_per_unit: 1-d array of float64 average media costs per unit [channel]
         :param media_names: 1-d array of media channel names
-        :param extra_features_data: 2-d array of extra feature values [time, channel]
+        :param extra_features_data: 2-d array of float64 extra feature values [time, channel]
         :param extra_features_names: 1-d array of extra feature names
-        :param target_data: 1-d array of target metric values
+        :param target_data: 1-d array of float64 target metric values
         :param target_name: name of target metric
         """
         self.date_strs = date_strs
         self.time_granularity = time_granularity
         self.media_data = media_data
         self.media_costs_per_unit = media_costs_per_unit
-        self.media_channel_names = media_names
+        self.media_names = media_names
         self.extra_features_data = extra_features_data
         self.extra_features_names = extra_features_names
         self.target_data = target_data
