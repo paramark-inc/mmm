@@ -120,3 +120,26 @@ class InputData:
             print(f"{target:,.2f}")
 
         print(f"\ntarget_name={self.target_name}")
+
+
+class DataToFit:
+    """
+    InputData tranformed to be suitable for fitting a model.  The data undergoes the following transformations
+    * split into train and test data set
+    * scaled to be smaller values for better accuracy from the Bayesian model
+    """
+
+    def __init__(self, media_data_train_scaled, media_data_test_scaled, media_scaler, extra_features_train_scaled,
+                 extra_features_test_scaled, extra_features_scaler, media_costs_scaled, media_costs_scaler,
+                 target_train_scaled, target_test_scaled, target_scaler):
+        self.media_data_train_scaled = media_data_train_scaled
+        self.media_data_test_scaled = media_data_test_scaled
+        self.media_scaler = media_scaler
+        self.extra_features_train_scaled = extra_features_train_scaled
+        self.extra_features_test_scaled = extra_features_test_scaled
+        self.extra_features_scaler = extra_features_scaler
+        self.media_costs_scaled = media_costs_scaled
+        self.media_costs_scaler = media_costs_scaler
+        self.target_train_scaled = target_train_scaled
+        self.target_test_scaled = target_test_scaled
+        self.target_scaler = target_scaler
