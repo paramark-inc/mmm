@@ -78,48 +78,53 @@ class InputData:
         self.target_data = target_data
         self.target_name = target_name
 
-    def dump(self):
+    def dump(self, verbose=False):
         """
         Debugging routine
         :return:
         """
         print("Dumping input_data")
-        print("\ndate_strs")
-        for dstr in self.date_strs:
-            print(f"{dstr}")
+        if verbose:
+            print("\ndate_strs")
+            for dstr in self.date_strs:
+                print(f"{dstr}")
 
         print(f"\ntime_granularity={self.time_granularity}")
-        print("\nmedia_data")
-        for media_observation in self.media_data:
-            media_line = ""
-            for media_val in media_observation:
-                media_line += f"{media_val:,.2f} "
-            print(media_line)
-
-        print("\nmedia_costs_per_unit")
-        for media_cost in self.media_costs_per_unit:
-            print(f"{media_cost:,.2f}")
 
         print("\nmedia_names")
         for media_name in self.media_names:
             print(f"{media_name}")
 
-        print("\nextra_features_data")
-        for extra_feature_observation in self.extra_features_data:
-            extra_line = ""
-            for extra_feature_val in extra_feature_observation:
-                extra_line += f"{extra_feature_val:,.2f} "
-            print(f"{extra_line}")
+        if verbose:
+            print("\nmedia_data")
+            for media_observation in self.media_data:
+                media_line = ""
+                for media_val in media_observation:
+                    media_line += f"{media_val:,.2f} "
+                print(media_line)
+
+        print("\nmedia_costs_per_unit")
+        for media_cost in self.media_costs_per_unit:
+            print(f"{media_cost:,.2f}")
 
         print("\nextra_features_names")
         for extra_feature_name in self.extra_features_names:
             print(f"{extra_feature_name}")
 
-        print("\ntarget_data")
-        for target in self.target_data:
-            print(f"{target:,.2f}")
+        if verbose:
+            print("\nextra_features_data")
+            for extra_feature_observation in self.extra_features_data:
+                extra_line = ""
+                for extra_feature_val in extra_feature_observation:
+                    extra_line += f"{extra_feature_val:,.2f} "
+                print(f"{extra_line}")
 
         print(f"\ntarget_name={self.target_name}")
+
+        if verbose:
+            print("\ntarget_data")
+            for target in self.target_data:
+                print(f"{target:,.2f}")
 
 
 class DataToFit:
