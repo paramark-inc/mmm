@@ -3,6 +3,8 @@ import jax.numpy as jnp
 import impl.lightweight_mmm.lightweight_mmm.lightweight_mmm as lightweight_mmm
 
 from impl.lightweight_mmm.lightweight_mmm import preprocessing
+
+from constants import constants
 from model.model import DataToFit
 
 
@@ -53,10 +55,11 @@ def make_data_to_fit(input_data):
                      target_scaler=target_scaler)
 
 
-def fit_lightweight_mmm(data_to_fit):
+def fit_lightweight_mmm(input_data, data_to_fit):
     """
     fit a lightweight mmm model to input_data
 
+    :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
     :return: lightweightMMM instance
     """
@@ -65,10 +68,11 @@ def fit_lightweight_mmm(data_to_fit):
     mmm = lightweight_mmm.LightweightMMM(model_name="hill_adstock")
 
     # number_chains=1 because my laptop has only one CPU (jax.local_device_count())
-    # TODO think about seasonality options
+    # TODO degrees_seasonality
     mmm.fit(media=data_to_fit.media_data_train_scaled,
-            seasonality_frequency=365,
-            weekday_seasonality=True,
+            seasonality_frequency=365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52,
+            weekday_seasonality=True if input_data.time_granularity == constants.GRANULARITY_DAILY else False,
+            media_names=input_data.media_names,
             extra_features=data_to_fit.extra_features_train_scaled,
             media_prior=data_to_fit.media_costs_scaled,
             target=data_to_fit.target_train_scaled,
