@@ -6,7 +6,12 @@ from impl.lightweight_mmm.lightweight_mmm import preprocessing
 from model.model import DataToFit
 
 
-def _make_data_to_fit(input_data):
+def make_data_to_fit(input_data):
+    """
+    Generate a DataToFit instance from an InputData instance
+    :param input_data: InputData instance
+    :return: DataToFit instance
+    """
     data_size = input_data.media_data.shape[0]
 
     split_point = data_size - data_size // 10
@@ -48,14 +53,13 @@ def _make_data_to_fit(input_data):
                      target_scaler=target_scaler)
 
 
-def fit_lightweight_mmm(input_data):
+def fit_lightweight_mmm(data_to_fit):
     """
     fit a lightweight mmm model to input_data
 
-    :param input_data: input_data of type InputData
-    :return: (model, target_scaler) tuple
+    :param data_to_fit: DataToFit instance
+    :return: lightweightMMM instance
     """
-    data_to_fit = _make_data_to_fit(input_data)
 
     # train the model
     mmm = lightweight_mmm.LightweightMMM(model_name="hill_adstock")
@@ -72,4 +76,4 @@ def fit_lightweight_mmm(input_data):
             number_samples=2000,
             number_chains=1)
 
-    return mmm, data_to_fit
+    return mmm
