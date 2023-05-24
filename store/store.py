@@ -4,13 +4,13 @@ import secrets
 from datetime import datetime
 
 
-def generate_results_dirname(data_dir, customer):
+def generate_results_dirname(data_dir, dirname_fixed):
     """
     generate a unique directory name for a given customer name
 
     :param data_dir: directory prefix
-    :param customer: customer name suitable for including in a pathname
-    :return: directory name of form <data_dir>/results/<customer>/<generated name>
+    :param dirname_fixed: customer name suitable for including in a pathname
+    :return: directory name of form <data_dir>/results/<dirname_fixed>/<generated name>
     """
     now_date = datetime.now()
     yyyymmdd = now_date.date().strftime("%Y-%m-%d")
@@ -19,6 +19,6 @@ def generate_results_dirname(data_dir, customer):
     return os.path.join(
         data_dir,
         "results",
-        customer,
+        dirname_fixed,
         f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
     )
