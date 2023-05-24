@@ -3,6 +3,8 @@ import secrets
 
 from datetime import datetime
 
+from impl.lightweight_mmm.lightweight_mmm.utils import save_model as lwmmm_save_model
+
 
 def generate_results_dirname(data_dir, dirname_fixed):
     """
@@ -22,3 +24,17 @@ def generate_results_dirname(data_dir, dirname_fixed):
         dirname_fixed,
         f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
     )
+
+
+def save_model(mmm, results_dir):
+    """
+    save the lightweight mmm model file to the file system
+    :param mmm: LightweightMMM instance
+    :param results_dir: directory to write the model file to
+    :return: fully qualified path to model file
+    """
+    output_fname = os.path.join(results_dir, "model.lwm")
+    lwmmm_save_model(mmm, output_fname)
+    print(f"wrote {output_fname}")
+
+    return output_fname

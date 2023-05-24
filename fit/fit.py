@@ -6,8 +6,6 @@ from impl.lightweight_mmm.lightweight_mmm import preprocessing
 from model.model import DataToFit
 
 
-# from mmm.impl.lightweight_mmm.lightweight_mmm import plot as mmm_plot
-
 def _make_data_to_fit(input_data):
     data_size = input_data.media_data.shape[0]
 
