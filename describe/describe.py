@@ -82,8 +82,10 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         extra_features=data_to_fit.extra_features_test_scaled,
         target_scaler=data_to_fit.target_scaler
     )
+
+    target_test_unscaled = data_to_fit.target_scaler.inverse_transform(data_to_fit.target_test_scaled)
     plt = plot_out_of_sample_model_fit(
-        out_of_sample_predictions=prediction, out_of_sample_target=data_to_fit.target_test_scaled
+        out_of_sample_predictions=prediction, out_of_sample_target=target_test_unscaled
     )
     output_fname = os.path.join(results_dir, "out_of_sample_model_fit.png")
     plt.savefig(output_fname)
