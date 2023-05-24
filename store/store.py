@@ -3,6 +3,7 @@ import secrets
 
 from datetime import datetime
 
+from impl.lightweight_mmm.lightweight_mmm.utils import load_model as lwmmm_load_model
 from impl.lightweight_mmm.lightweight_mmm.utils import save_model as lwmmm_save_model
 
 
@@ -42,3 +43,12 @@ def save_model(mmm, results_dir):
     print(f"wrote {output_fname}")
 
     return output_fname
+
+
+def load_model(model_filename):
+    """
+    load a model that was created in a previous run
+    :param model_filename: model filename
+    :return: LightweightMMM instance
+    """
+    return lwmmm_load_model(file_path=model_filename)
