@@ -20,5 +20,5 @@ def generate_results_dirname(data_dir, customer):
         data_dir,
         "results",
         customer,
-        yyyymmdd + "-" + hextoken + "-" + str(seconds_since_midnight)
+        f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
     )
