@@ -7,6 +7,8 @@ def _print_outliers_for_data(name, data):
     mean = df['values'].mean()
     stddev = df['values'].std()
 
+    # TODO do something more robust - e.g. find values that are > 3x of the trimmed mean
+
     # mean and stddev are floats so this is a floating point operation
     outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
