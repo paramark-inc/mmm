@@ -37,7 +37,7 @@ def print_outliers(input_data):
 
     for extra_feature_idx in range(input_data.extra_features_data.shape[1]):
         metric_names_and_values.append(
-            (input_data.extra_features_names[extra_feature_idx], input_data.extra_features_data[extra_feature_idx]))
+            (input_data.extra_features_names[extra_feature_idx], input_data.extra_features_data[:, extra_feature_idx]))
 
     metric_names_and_values.append((input_data.target_name, input_data.target_data))
 
