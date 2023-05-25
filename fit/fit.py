@@ -41,8 +41,8 @@ def make_data_to_fit(input_data):
     # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive constraint
     # on all values
     costs_fixup = jnp.where(
-        input_data.media_costs_per_unit > 0.0,
-        input_data.media_costs_per_unit,
+        input_data.media_costs > 0.0,
+        input_data.media_costs,
         0.00001
     )
     media_costs_scaled = media_cost_scaler.fit_transform(costs_fixup)

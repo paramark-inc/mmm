@@ -27,7 +27,7 @@ def test_plot_all_metrics(output_dir):
         date_strs=np.full(num_observations, "1/1"),
         time_granularity=constants.GRANULARITY_DAILY,
         media_data=np.column_stack((metric1_values, metric2_values, metric3_values)),
-        media_costs_per_unit=np.array([0.5, 0.4, 0.3], dtype=np.float64),
+        media_costs=np.array([0.5, 0.4, 0.3], dtype=np.float64),
         media_names=np.array(["metric1", "metric2", "metric3"]),
         extra_features_data=np.ndarray(shape=(0, 0)),
         extra_features_names=np.array([]),

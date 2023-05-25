@@ -52,7 +52,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     print(f"wrote {output_fname}")
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        unscaled_costs=input_data.media_costs_per_unit,
+        unscaled_costs=input_data.media_costs,
         target_scaler=data_to_fit.target_scaler,
         cost_scaler=data_to_fit.media_costs_scaler
     )

@@ -14,7 +14,7 @@ class InputData:
     """
 
     @staticmethod
-    def _validate(date_strs, time_granularity, media_data, media_costs_per_unit, media_names, extra_features_data,
+    def _validate(date_strs, time_granularity, media_data, media_costs, media_names, extra_features_data,
                   extra_features_names,
                   target_data,
                   target_name):
@@ -27,9 +27,9 @@ class InputData:
         num_channels = media_data.shape[1]
         assert np.float64 == media_data.dtype, f"{np.float64} {media_data.dtype}"
 
-        assert 1 == media_costs_per_unit.ndim, f"{media_costs_per_unit.ndim}"
-        assert num_channels == media_costs_per_unit.shape[0], f"{num_channels} {media_costs_per_unit.shape[0]}"
-        assert np.float64 == media_costs_per_unit.dtype, f"{np.float64} {media_costs_per_unit.dtype}"
+        assert 1 == media_costs.ndim, f"{media_costs.ndim}"
+        assert num_channels == media_costs.shape[0], f"{num_channels} {media_costs.shape[0]}"
+        assert np.float64 == media_costs.dtype, f"{np.float64} {media_costs.dtype}"
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
@@ -47,7 +47,7 @@ class InputData:
 
         assert target_name
 
-    def __init__(self, date_strs, time_granularity, media_data, media_costs_per_unit, media_names, extra_features_data,
+    def __init__(self, date_strs, time_granularity, media_data, media_costs, media_names, extra_features_data,
                  extra_features_names,
                  target_data,
                  target_name):
@@ -56,7 +56,7 @@ class InputData:
         :param time_granularity: string constant describing the granularity of the time series data (
                                  constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
         :param media_data: 2-d array of float64 media data values [time,channel]
-        :param media_costs_per_unit: 1-d array of float64 average media costs per unit [channel]
+        :param media_costs: 1-d array of float64 total media costs [channel]
         :param media_names: 1-d array of media channel names
         :param extra_features_data: 2-d array of float64 extra feature values [time, channel]
         :param extra_features_names: 1-d array of extra feature names
@@ -64,14 +64,14 @@ class InputData:
         :param target_name: name of target metric
         """
         InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
-                            media_costs_per_unit=media_costs_per_unit, media_names=media_names,
+                            media_costs=media_costs, media_names=media_names,
                             extra_features_data=extra_features_data, extra_features_names=extra_features_names,
                             target_data=target_data, target_name=target_name)
 
         self.date_strs = date_strs
         self.time_granularity = time_granularity
         self.media_data = media_data
-        self.media_costs_per_unit = media_costs_per_unit
+        self.media_costs = media_costs
         self.media_names = media_names
         self.extra_features_data = extra_features_data
         self.extra_features_names = extra_features_names
@@ -103,8 +103,8 @@ class InputData:
                     media_line += f"{media_val:,.2f} "
                 print(media_line)
 
-        print("\nmedia_costs_per_unit")
-        for media_cost in self.media_costs_per_unit:
+        print("\nmedia_costs")
+        for media_cost in self.media_costs:
             print(f"{media_cost:,.2f}")
 
         print("\nextra_features_names")

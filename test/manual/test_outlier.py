@@ -34,7 +34,7 @@ def test_print_outliers():
         date_strs=np.full(media1_values.shape[0], "1/1"),
         time_granularity=constants.GRANULARITY_DAILY,
         media_data=np.column_stack((media1_values, media2_values, media3_values)),
-        media_costs_per_unit=np.array([0.5, 0.6, 0.7], dtype=np.float64),
+        media_costs=np.array([0.5, 0.6, 0.7], dtype=np.float64),
         media_names=np.array(["media1", "media2", "media3"]),
         extra_features_data=np.ndarray(shape=(0, 0)),
         extra_features_names=np.array([]),
