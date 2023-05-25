@@ -12,10 +12,15 @@ def _print_outliers_for_data(name, data):
     # mean and stddev are floats so this is a floating point operation
     outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
-    print(f"outlier data points for {name} (mean={mean:,.2f} stddev={stddev:,.2f})")
+    print(f"outlier data points (stddev method) for {name} (mean={mean:,.2f} stddev={stddev:,.2f})")
     for i, v in outliers.items():
         stddevs_from_mean = np.absolute(v - mean) / stddev
         print(f"  index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}")
+
+    print(f"outlier data points (top/bottom method) for {name} (bottom values first)")
+    sortedvalues = df['values'].sort_values(ascending=True)
+    print(sortedvalues.head(10))
+    print(sortedvalues.tail(10))
 
 
 def print_outliers(input_data):
