@@ -43,7 +43,7 @@ def make_data_to_fit(input_data):
     costs_fixup = jnp.where(
         input_data.media_costs_per_unit > 0.0,
         input_data.media_costs_per_unit,
-        0.001
+        0.00001
     )
     media_costs_scaled = media_cost_scaler.fit_transform(costs_fixup)
 
