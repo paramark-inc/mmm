@@ -8,8 +8,8 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_response_curves
 )
 
-from outlier.outlier import print_outliers
-from plot.plot import plot_all_metrics
+from ..outlier.outlier import print_outliers
+from ..plot.plot import plot_all_metrics
 
 
 def describe_input_data(input_data, results_dir):

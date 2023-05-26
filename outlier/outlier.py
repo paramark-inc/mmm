@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import scipy.stats as spstats
 
-from constants import constants
-from model.model import InputData
+from ..constants import constants
+from ..model.model import InputData
 
 
 def _print_outliers_for_data(name, data):

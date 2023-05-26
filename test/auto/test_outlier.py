@@ -2,9 +2,9 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 import unittest
 
-from constants import constants
-from model.model import InputData
-from outlier.outlier import remove_outliers_from_input
+from ...constants import constants
+from ...model.model import InputData
+from ...outlier.outlier import remove_outliers_from_input
 
 
 class OutlierTestCase(unittest.TestCase):

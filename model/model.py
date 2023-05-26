@@ -1,6 +1,6 @@
 import numpy as np
 
-from constants import constants
+from ..constants import constants
 
 
 class InputData:
