@@ -3,8 +3,8 @@ import secrets
 
 from datetime import datetime
 
-from impl.lightweight_mmm.lightweight_mmm.utils import load_model as lwmmm_load_model
-from impl.lightweight_mmm.lightweight_mmm.utils import save_model as lwmmm_save_model
+from ..impl.lightweight_mmm.lightweight_mmm.utils import load_model as lwmmm_load_model
+from ..impl.lightweight_mmm.lightweight_mmm.utils import save_model as lwmmm_save_model
 
 
 def make_results_dir(data_dir, dirname_fixed):
