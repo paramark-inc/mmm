@@ -47,7 +47,51 @@ class InputData:
 
         assert target_name
 
-    def __init__(self, date_strs, time_granularity, media_data, media_costs, media_names, extra_features_data,
+    @staticmethod
+    def clone_with_data_edits(input_data, editor_func, context):
+        """
+        clone the input_data while allowing the editor_func to modify data values on a copy of the data.
+
+        :param input_data: InputData instance
+        :param editor_func: function called to allow editing of copies
+          args: context, date_strs, media_data, extra_features_data, target_data
+                 (each is a copy that the func can modify)
+          return: none
+        :param context client context
+        :return: new InputData instance (deep copy)
+        """
+        date_strs_copy = input_data.date_strs.copy()
+        media_data_copy = input_data.media_data.copy()
+        extra_features_data_copy = input_data.extra_features_data.copy()
+        target_data_copy = input_data.target_data.copy()
+
+        editor_func(
+            context=context,
+            date_strs=date_strs_copy,
+            media_data=media_data_copy,
+            extra_features_data=extra_features_data_copy,
+            target_data=target_data_copy
+        )
+
+        return InputData(
+            date_strs=date_strs_copy,
+            time_granularity=input_data.time_granularity,
+            media_data=media_data_copy,
+            media_costs=input_data.media_costs.copy(),
+            media_names=input_data.media_names.copy(),
+            extra_features_data=extra_features_data_copy,
+            extra_features_names=input_data.extra_features_names.copy(),
+            target_data=target_data_copy,
+            target_name=input_data.target_name
+        )
+
+    def __init__(self,
+                 date_strs,
+                 time_granularity,
+                 media_data,
+                 media_costs,
+                 media_names,
+                 extra_features_data,
                  extra_features_names,
                  target_data,
                  target_name):
