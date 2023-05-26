@@ -1,6 +1,6 @@
 import os
 
-from impl.lightweight_mmm.lightweight_mmm.plot import (
+from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
     plot_media_channel_posteriors,
     plot_model_fit,
