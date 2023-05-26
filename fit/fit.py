@@ -1,11 +1,10 @@
 import jax.numpy as jnp
 
-import impl.lightweight_mmm.lightweight_mmm.lightweight_mmm as lightweight_mmm
+from ..impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
+from ..impl.lightweight_mmm.lightweight_mmm import preprocessing
 
-from impl.lightweight_mmm.lightweight_mmm import preprocessing
-
-from constants import constants
-from model.model import DataToFit
+from ..constants import constants
+from ..model.model import DataToFit
 
 
 def make_data_to_fit(input_data):
