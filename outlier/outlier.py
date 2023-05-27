@@ -66,18 +66,16 @@ def _replace_with_trimmed_mean_editor_func(context, date_strs, media_data, extra
     target_outliers = context["target_outliers"]
 
     for media_name, outlier_indices in media_data_outliers.items():
-        matching_indices, = np.where(old_input_data.media_names == media_name)
-        assert 1 == matching_indices.shape[0], f"{media_name} {matching_indices.shape[0]}"
-        media_idx = matching_indices[0]
+        media_idx = old_input_data.media_names.index(media_name)
+        assert media_idx >= 0, f"{media_idx} {media_name}"
         media_trimmed_mean = spstats.trim_mean(media_data[:, media_idx], 0.1)
 
         for outlier_idx in outlier_indices:
             media_data[outlier_idx][media_idx] = media_trimmed_mean
 
     for extra_features_name, outlier_indices in extra_features_outliers.items():
-        matching_indices = np.where(old_input_data.extra_features_names == extra_features_name)
-        assert 1 == matching_indices.shape[0], f"{extra_features_name} {matching_indices.shape[0]}"
-        extra_features_idx = matching_indices[0]
+        extra_features_idx = old_input_data.extra_features_names.index(extra_features_name)
+        assert extra_features_idx >= 0, f"{extra_features_idx} {extra_features_name}"
         extra_features_trimmed_mean = spstats.trim_mean(extra_features_data[:, extra_features_idx], 0.1)
 
         for outlier_idx in outlier_indices:

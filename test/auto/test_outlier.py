@@ -18,12 +18,12 @@ class OutlierTestCase(unittest.TestCase):
                 dtype=np.float64
             ),
             media_costs=np.array([100.0, 200.0, 300.0], dtype=np.float64),
-            media_names=np.array(["Google", "Facebook", "Events"]),
+            media_names=["Google", "Facebook", "Events"],
             extra_features_data=np.array(
                 [[5.0, 5.0], [6.0, 6.0], [7.0, 7.0], [8.0, 8.0]],
                 dtype=np.float64
             ),
-            extra_features_names=np.array(["Macro1", "Macro2"]),
+            extra_features_names=["Macro1", "Macro2"],
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
             target_name="Sales"
         )

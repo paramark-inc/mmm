@@ -14,7 +14,12 @@ class InputData:
     """
 
     @staticmethod
-    def _validate(date_strs, time_granularity, media_data, media_costs, media_names, extra_features_data,
+    def _validate(date_strs,
+                  time_granularity,
+                  media_data,
+                  media_costs,
+                  media_names,
+                  extra_features_data,
                   extra_features_names,
                   target_data,
                   target_name):
@@ -96,15 +101,15 @@ class InputData:
                  target_data,
                  target_name):
         """
-        :param date_strs: array of labels for each time series data point
+        :param date_strs: 1-d numpy array of labels for each time series data point
         :param time_granularity: string constant describing the granularity of the time series data (
                                  constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
-        :param media_data: 2-d array of float64 media data values [time,channel]
-        :param media_costs: 1-d array of float64 total media costs [channel]
-        :param media_names: 1-d array of media channel names
-        :param extra_features_data: 2-d array of float64 extra feature values [time, channel]
-        :param extra_features_names: 1-d array of extra feature names
-        :param target_data: 1-d array of float64 target metric values
+        :param media_data: 2-d numpy array of float64 media data values [time,channel]
+        :param media_costs: 1-d numpy array of float64 total media costs [channel]
+        :param media_names: list of media channel names
+        :param extra_features_data: 2-d numpy array of float64 extra feature values [time, channel]
+        :param extra_features_names: list of extra feature names
+        :param target_data: 1-d numpy array of float64 target metric values
         :param target_name: name of target metric
         """
         InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
