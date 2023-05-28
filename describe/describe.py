@@ -12,15 +12,16 @@ from ..outlier.outlier import print_outliers
 from ..plot.plot import plot_all_metrics
 
 
-def describe_input_data(input_data, results_dir):
+def describe_input_data(input_data, results_dir, suffix):
     """
     plot and print diagnostic analyses based on the input data
     :param input_data: InputData instance
     :param results_dir: directory to write plot files to
+    :param suffix: suffix to append to filename
     :return:
     """
-    plot_all_metrics(input_data, results_dir)
-    print_outliers(input_data)
+    plot_all_metrics(input_data=input_data, output_dir=results_dir, suffix=suffix)
+    print_outliers(input_data=input_data, suffix=suffix)
 
 
 def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):

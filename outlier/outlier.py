@@ -6,7 +6,7 @@ from ..constants import constants
 from ..model.model import InputData
 
 
-def _print_outliers_for_data(name, data):
+def _print_outliers_for_data(name, data, suffix):
     df = pd.DataFrame({'values': data})
     mean = df['values'].mean()
     stddev = df['values'].std()
@@ -16,7 +16,7 @@ def _print_outliers_for_data(name, data):
     # mean and stddev are floats so this is a floating point operation
     outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
-    print(f"outlier data points (stddev method) for {name} (mean={mean:,.2f} stddev={stddev:,.2f})")
+    print(f"outlier data points (stddev method) for {name}_{suffix} (mean={mean:,.2f} stddev={stddev:,.2f})")
     for i, v in outliers.items():
         stddevs_from_mean = np.absolute(v - mean) / stddev
         print(f"  index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}")
@@ -27,10 +27,11 @@ def _print_outliers_for_data(name, data):
     print(sortedvalues.tail(10))
 
 
-def print_outliers(input_data):
+def print_outliers(input_data, suffix):
     """
     print outliers (defined here as any data points more than 2 standard deviations from the mean)
     :param input_data: InputData object
+    :param suffix: log suffix
     """
 
     metric_names_and_values = []
@@ -46,7 +47,7 @@ def print_outliers(input_data):
     metric_names_and_values.append((input_data.target_name, input_data.target_data))
 
     for name, data in metric_names_and_values:
-        _print_outliers_for_data(name=name, data=data)
+        _print_outliers_for_data(name=name, data=data, suffix=suffix)
 
 
 # noinspection PyUnusedLocal

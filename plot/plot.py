@@ -9,13 +9,14 @@ def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, values):
     axs[idx].plot(time_axis, values)
 
 
-def plot_all_metrics(input_data, output_dir):
+def plot_all_metrics(input_data, output_dir, suffix):
     """
     plots each metric in the input data object, generating an image file for each in the output directory.
     note that we are not plotting the costs at present.
 
     :param input_data: InputData model
     :param output_dir: directory to write image files to each
+    :param suffix: suffix to append to filename
     :return: n/a
     """
 
@@ -46,6 +47,6 @@ def plot_all_metrics(input_data, output_dir):
     # tight_layout will space the charts out evenly, vertically
     fig.tight_layout()
 
-    output_fname = os.path.join(output_dir, "all_metrics.png")
+    output_fname = os.path.join(output_dir, f"all_metrics_{suffix}.png")
     plt.savefig(output_fname)
     print(f"wrote '{output_fname}'")
