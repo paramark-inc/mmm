@@ -16,15 +16,17 @@ def _print_outliers_for_data(name, data, suffix):
     # mean and stddev are floats so this is a floating point operation
     outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
-    print(f"outlier data points (stddev method) for {name}_{suffix} (mean={mean:,.2f} stddev={stddev:,.2f})")
+    print(f"outlier data points (stddev method) for {name} ({suffix}) (mean={mean:,.2f} stddev={stddev:,.2f})")
     for i, v in outliers.items():
         stddevs_from_mean = np.absolute(v - mean) / stddev
         print(f"  index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}")
 
-    print(f"outlier data points (top/bottom method) for {name} (bottom values first)")
+    print(f"outlier data points (top/bottom method) for {name} ({suffix}) (bottom values first)")
     sortedvalues = df['values'].sort_values(ascending=True)
-    print(sortedvalues.head(10))
-    print(sortedvalues.tail(10))
+    for val in sortedvalues.head(10):
+        print(f"  {val}")
+    for val in sortedvalues.tail(10):
+        print(f"  {val}")
 
 
 def print_outliers(input_data, suffix):
@@ -101,6 +103,7 @@ def remove_outliers_from_input(input_data, media_data_outliers, extra_features_o
 
     assert removal_type == constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN, f"{removal_type}"
 
+    print(f"Removing outliers type={removal_type}")
     context = {
         "old_input_data": input_data,
         "media_data_outliers": media_data_outliers,
