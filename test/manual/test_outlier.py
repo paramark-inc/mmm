@@ -28,6 +28,7 @@ def test_print_outliers():
          400000000, 500000000, 100000000],
         dtype=np.float64)
 
+    # noinspection PyUnusedLocal
     target_values = np.array([1 for x in media1_values], dtype=np.float64)
 
     input_data = InputData(
@@ -43,7 +44,7 @@ def test_print_outliers():
     )
     # input_data.dump()
 
-    print_outliers(input_data)
+    print_outliers(input_data=input_data, suffix="test")
 
 
 @click.command()

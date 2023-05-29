@@ -23,10 +23,10 @@ def _print_outliers_for_data(name, data, suffix):
 
     print(f"outlier data points (top/bottom method) for {name} ({suffix}) (bottom values first)")
     sortedvalues = df['values'].sort_values(ascending=True)
-    for val in sortedvalues.head(10):
-        print(f"  {val}")
-    for val in sortedvalues.tail(10):
-        print(f"  {val}")
+    for i, v in sortedvalues.head(10).items():
+        print(f"  index={i:4d} value={v:14,.0f}")
+    for i, v in sortedvalues.tail(10).items():
+        print(f"  index={i:4d} value={v:14,.0f}")
 
 
 def print_outliers(input_data, suffix):
