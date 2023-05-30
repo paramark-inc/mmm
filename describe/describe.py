@@ -2,6 +2,7 @@ import os
 
 from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
+    plot_media_baseline_contribution_area_plot,
     plot_media_channel_posteriors,
     plot_model_fit,
     plot_out_of_sample_model_fit,
@@ -68,6 +69,13 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
 
     plt = plot_bars_media_metrics(metric=roi_hat, channel_names=input_data.media_names)
     output_fname = os.path.join(results_dir, "roi_hat.png")
+    plt.savefig(output_fname)
+    print(f"wrote {output_fname}")
+
+    plt = plot_media_baseline_contribution_area_plot(
+        media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=input_data.media_names
+    )
+    output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
 
