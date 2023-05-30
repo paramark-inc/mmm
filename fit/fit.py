@@ -54,23 +54,23 @@ def make_data_to_fit(input_data):
                      target_scaler=target_scaler)
 
 
-def fit_lightweight_mmm(input_data, data_to_fit, transform_name):
+def fit_lightweight_mmm(input_data, data_to_fit, model_name):
     """
     fit a lightweight mmm model to input_data
 
     :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
-    :param transform_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_TRANSFORM_XXX)
+    :param model_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_MODELNAME_XXX)
     :return: lightweightMMM instance
     """
-    assert transform_name in (
-        constants.FIT_LIGHTWEIGHT_MMM_TRANSFORM_ADSTOCK,
-        constants.FIT_LIGHTWEIGHT_MMM_TRANSFORM_HILL_ADSTOCK,
-        constants.FIT_LIGHTWEIGHT_MMM_TRANSFORM_CARRYOVER
-    ), transform_name
+    assert model_name in (
+        constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_ADSTOCK,
+        constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_HILL_ADSTOCK,
+        constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_CARRYOVER
+    ), model_name
 
     # train the model
-    mmm = lightweight_mmm.LightweightMMM(model_name=transform_name)
+    mmm = lightweight_mmm.LightweightMMM(model_name=model_name)
 
     # number_chains=1 because my laptop has only one CPU (jax.local_device_count())
     # TODO degrees_seasonality
