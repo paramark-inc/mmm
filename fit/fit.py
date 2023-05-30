@@ -54,13 +54,14 @@ def make_data_to_fit(input_data):
                      target_scaler=target_scaler)
 
 
-def fit_lightweight_mmm(input_data, data_to_fit, model_name):
+def fit_lightweight_mmm(input_data, data_to_fit, model_name, degrees_seasonality=2):
     """
     fit a lightweight mmm model to input_data
 
     :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
     :param model_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_MODELNAME_XXX)
+    :param degrees_seasonality: degrees of seasonality to pass through to lw MMM
     :return: lightweightMMM instance
     """
     assert model_name in (
@@ -75,6 +76,7 @@ def fit_lightweight_mmm(input_data, data_to_fit, model_name):
     # number_chains=1 because my laptop has only one CPU (jax.local_device_count())
     # TODO degrees_seasonality
     mmm.fit(media=data_to_fit.media_data_train_scaled,
+            degrees_seasonality=degrees_seasonality,
             seasonality_frequency=365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52,
             weekday_seasonality=True if input_data.time_granularity == constants.GRANULARITY_DAILY else False,
             media_names=input_data.media_names,
