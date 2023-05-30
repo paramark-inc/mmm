@@ -52,8 +52,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
 
+    # Pass unscaled_costs instead of cost_scaler because we don't want get_posterior_metrics to unscale the
+    # cost data.  This is because the cost scaler did not support zero values, so we had to replace the zero values
+    # with a small non-zero value.  For the purpose of this ROI calculation, we want to use the unscaled cost values
+    # to properly reflect the fact that ROI doesn't make sense for these channels.
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        cost_scaler=data_to_fit.media_costs_scaler,
+        unscaled_costs=input_data.media_costs,
         target_scaler=data_to_fit.target_scaler
     )
 
