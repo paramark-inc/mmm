@@ -22,7 +22,7 @@ def describe_input_data(input_data, results_dir, suffix):
     :return:
     """
     plot_all_metrics(input_data=input_data, output_dir=results_dir, suffix=suffix)
-    print_outliers(input_data=input_data, suffix=suffix)
+    print_outliers(input_data=input_data, output_dir=results_dir, suffix=suffix)
 
 
 def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):

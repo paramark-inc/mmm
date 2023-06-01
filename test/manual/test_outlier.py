@@ -6,7 +6,7 @@ from ...model.model import InputData
 from ...outlier.outlier import print_outliers
 
 
-def test_print_outliers():
+def test_print_outliers(output_dir):
     media1_values = np.array(
         [1, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5,
          2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 100000000],
@@ -44,18 +44,19 @@ def test_print_outliers():
     )
     # input_data.dump()
 
-    print_outliers(input_data=input_data, suffix="test")
+    print_outliers(input_data=input_data, output_dir=output_dir, suffix="test")
 
 
 @click.command()
 @click.option("--routine", required=True, help="routine name")
-def run(routine):
+@click.option("--output_dir", required=False, help="output_dir arg for test_print_outliers")
+def run(routine, **kwargs):
     """
     :param routine: routine name
     :return:
     """
     assert "test_print_outliers" == routine
-    test_print_outliers()
+    test_print_outliers(**kwargs)
 
 
 if __name__ == "__main__":

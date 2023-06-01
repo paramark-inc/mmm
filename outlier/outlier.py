@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 import scipy.stats as spstats
@@ -6,33 +8,35 @@ from ..constants import constants
 from ..model.model import InputData
 
 
-def _print_outliers_for_data(name, data, suffix):
+def _print_outliers_for_data(name, data, output_dir, suffix):
     df = pd.DataFrame({'values': data})
     mean = df['values'].mean()
     stddev = df['values'].std()
 
-    # TODO do something more robust - e.g. find values that are > 3x of the trimmed mean
-
     # mean and stddev are floats so this is a floating point operation
     outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
 
-    print(f"outlier data points (stddev method) for {name} ({suffix}) (mean={mean:,.2f} stddev={stddev:,.2f})")
-    for i, v in outliers.items():
-        stddevs_from_mean = np.absolute(v - mean) / stddev
-        print(f"  index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}")
+    with open(os.path.join(output_dir, f"outliers_{suffix}.txt"), "w") as outliers_file:
+        outliers_file.write(
+            f"outlier data points (stddev method) for {name} ({suffix}) (mean={mean:,.2f} stddev={stddev:,.2f})\n"
+        )
+        for i, v in outliers.items():
+            stddevs_from_mean = np.absolute(v - mean) / stddev
+            outliers_file.write(f"  index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}\n")
 
-    print(f"outlier data points (top/bottom method) for {name} ({suffix}) (bottom values first)")
-    sortedvalues = df['values'].sort_values(ascending=True)
-    for i, v in sortedvalues.head(10).items():
-        print(f"  index={i:4d} value={v:14,.0f}")
-    for i, v in sortedvalues.tail(10).items():
-        print(f"  index={i:4d} value={v:14,.0f}")
+        outliers_file.write(f"outlier data points (top/bottom method) for {name} ({suffix}) (bottom values first)\n")
+        sortedvalues = df['values'].sort_values(ascending=True)
+        for i, v in sortedvalues.head(10).items():
+            outliers_file.write(f"  index={i:4d} value={v:14,.0f}\n")
+        for i, v in sortedvalues.tail(10).items():
+            outliers_file.write(f"  index={i:4d} value={v:14,.0f}\n")
 
 
-def print_outliers(input_data, suffix):
+def print_outliers(input_data, output_dir, suffix):
     """
     print outliers (defined here as any data points more than 2 standard deviations from the mean)
     :param input_data: InputData object
+    :param output_dir: path to directory to write to
     :param suffix: log suffix
     """
 
@@ -49,7 +53,7 @@ def print_outliers(input_data, suffix):
     metric_names_and_values.append((input_data.target_name, input_data.target_data))
 
     for name, data in metric_names_and_values:
-        _print_outliers_for_data(name=name, data=data, suffix=suffix)
+        _print_outliers_for_data(name=name, data=data, output_dir=output_dir, suffix=suffix)
 
 
 # noinspection PyUnusedLocal
