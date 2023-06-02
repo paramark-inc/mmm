@@ -9,3 +9,4 @@ FIT_LIGHTWEIGHT_MMM_MODELNAME_CARRYOVER = "carryover"
 
 # outlier.remove_outliers_from_input removal types
 REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN = "replace_with_trimmed_mean"
+REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE = "replace_with_p10_value"

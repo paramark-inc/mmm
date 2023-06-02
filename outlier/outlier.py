@@ -56,8 +56,23 @@ def print_outliers(input_data, output_dir, suffix):
                 outliers_file.write(f"index={i:4d} value={v:14,.0f}\n")
 
 
+def _compute_outlier_replacement_value(removal_type, data):
+    """
+    Compute the value to replace outliers with, based on the removal type.
+    :param removal_type: constants.REMOVE_OUTLIERS_XXX constant
+    :param data: array of values, with outlier values present
+    :return: single replacement value for outlier values
+    """
+    if removal_type == constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN:
+        return spstats.trim_mean(data, 0.1)
+    elif removal_type == constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE:
+        return np.percentile(data, 10)
+    else:
+        assert False, removal_type
+
+
 # noinspection PyUnusedLocal
-def _replace_with_trimmed_mean_editor_func(context, date_strs, media_data, extra_features_data, target_data):
+def _replace_outlier_editor_func(context, date_strs, media_data, extra_features_data, target_data):
     """
     See InputData.clone_with_data_edits
     :param context: client context
@@ -67,6 +82,7 @@ def _replace_with_trimmed_mean_editor_func(context, date_strs, media_data, extra
     :param target_data: editable copy of target_data
     :return: none
     """
+    removal_type = context["removal_type"]
     old_input_data = context["old_input_data"]
     media_data_outliers = context["media_data_outliers"]
     extra_features_outliers = context["extra_features_outliers"]
@@ -75,22 +91,24 @@ def _replace_with_trimmed_mean_editor_func(context, date_strs, media_data, extra
     for media_name, outlier_indices in media_data_outliers.items():
         media_idx = old_input_data.media_names.index(media_name)
         assert media_idx >= 0, f"{media_idx} {media_name}"
-        media_trimmed_mean = spstats.trim_mean(media_data[:, media_idx], 0.1)
+        media_val = _compute_outlier_replacement_value(removal_type, media_data[:, media_idx])
 
         for outlier_idx in outlier_indices:
-            media_data[outlier_idx][media_idx] = media_trimmed_mean
+            media_data[outlier_idx][media_idx] = media_val
 
     for extra_features_name, outlier_indices in extra_features_outliers.items():
         extra_features_idx = old_input_data.extra_features_names.index(extra_features_name)
         assert extra_features_idx >= 0, f"{extra_features_idx} {extra_features_name}"
-        extra_features_trimmed_mean = spstats.trim_mean(extra_features_data[:, extra_features_idx], 0.1)
+        extra_features_val = _compute_outlier_replacement_value(
+            removal_type, extra_features_data[:, extra_features_idx]
+        )
 
         for outlier_idx in outlier_indices:
-            extra_features_data[outlier_idx][extra_features_idx] = extra_features_trimmed_mean
+            extra_features_data[outlier_idx][extra_features_idx] = extra_features_val
 
-    target_trimmed_mean = spstats.trim_mean(target_data, 0.1)
+    target_val = _compute_outlier_replacement_value(removal_type, target_data)
     for outlier_idx in target_outliers:
-        target_data[outlier_idx] = target_trimmed_mean
+        target_data[outlier_idx] = target_val
 
 
 def remove_outliers_from_input(input_data, media_data_outliers, extra_features_outliers, target_outliers, removal_type):
@@ -105,10 +123,12 @@ def remove_outliers_from_input(input_data, media_data_outliers, extra_features_o
     :return: new InputData instance
     """
 
-    assert removal_type == constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN, f"{removal_type}"
+    assert removal_type in (constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN,
+                            constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE), f"{removal_type}"
 
     print(f"Removing outliers type={removal_type}")
     context = {
+        "removal_type": removal_type,
         "old_input_data": input_data,
         "media_data_outliers": media_data_outliers,
         "extra_features_outliers": extra_features_outliers,
@@ -117,6 +137,6 @@ def remove_outliers_from_input(input_data, media_data_outliers, extra_features_o
 
     return InputData.clone_with_data_edits(
         input_data=input_data,
-        editor_func=_replace_with_trimmed_mean_editor_func,
+        editor_func=_replace_outlier_editor_func,
         context=context
     )
