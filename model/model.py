@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 from ..constants import constants
 
@@ -127,53 +128,48 @@ class InputData:
         self.target_data = target_data
         self.target_name = target_name
 
-    def dump(self, verbose=False):
+    def dump(self, output_dir, suffix, verbose=True):
         """
         Debugging routine
+        :param output_dir: path to output directory to write to
+        :param suffix: suffix to append to filename
+        :param verbose True to get verbose printing
         :return:
         """
-        print("Dumping input_data")
-        if verbose:
-            print("\ndate_strs")
-            for dstr in self.date_strs:
-                print(f"{dstr}")
 
-        print(f"\ntime_granularity={self.time_granularity}")
+        with open(os.path.join(output_dir, f"input_data_{suffix}_summary.txt"), "w") as summary_file:
+            summary_file.write(f"time_granularity={self.time_granularity}\n")
+            summary_file.write(f"\nmedia_names:\n")
+            for idx, media_name in enumerate(self.media_names):
+                summary_file.write(f"media_names[{idx}]={media_name}\n")
+            summary_file.write(f"\nextra_features_names:\n")
+            for idx, extra_features_name in enumerate(self.extra_features_names):
+                summary_file.write(f"extra_features_names[{idx}]={extra_features_name}\n")
+            summary_file.write("\nmedia_costs:\n")
+            for idx, media_cost in enumerate(self.media_costs):
+                summary_file.write(f"media_costs[{idx}]={media_cost:,.2f}\n")
+            summary_file.write(f"\ntarget_name={self.target_name}\n")
 
-        print("\nmedia_names")
-        for media_name in self.media_names:
-            print(f"{media_name}")
+        if not verbose:
+            with open(os.path.join(output_dir, f"input_data_{suffix}_dates.txt"), "w") as dates_file:
+                for idx, dstr in enumerate(self.date_strs):
+                    dates_file.write(f"date_strs[{idx:>3}]={dstr:>5}\n")
 
-        if verbose:
-            print("\nmedia_data")
-            for media_observation in self.media_data:
-                media_line = ""
-                for media_val in media_observation:
-                    media_line += f"{media_val:,.2f} "
-                print(media_line)
+            for media_idx, media_name in enumerate(self.media_names):
+                media_fname = f"input_data_{suffix}_{media_name.lower()}.txt"
+                with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
+                    for idx, val in enumerate(self.media_data[:, media_idx]):
+                        media_data_file.write(f"media_data[{idx:>3}][{media_idx}]={val:,.2f}\n")
 
-        print("\nmedia_costs")
-        for media_cost in self.media_costs:
-            print(f"{media_cost:,.2f}")
+            for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
+                extra_features_fname = f"input_data_{suffix}_{extra_features_name.lower()}.txt"
+                with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
+                    for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
+                        extra_features_file.write(f"extra_features_data[{extra_features_idx:>3}][{idx}]={val:,.2f}\n")
 
-        print("\nextra_features_names")
-        for extra_feature_name in self.extra_features_names:
-            print(f"{extra_feature_name}")
-
-        if verbose:
-            print("\nextra_features_data")
-            for extra_feature_observation in self.extra_features_data:
-                extra_line = ""
-                for extra_feature_val in extra_feature_observation:
-                    extra_line += f"{extra_feature_val:,.2f} "
-                print(f"{extra_line}")
-
-        print(f"\ntarget_name={self.target_name}")
-
-        if verbose:
-            print("\ntarget_data")
-            for target in self.target_data:
-                print(f"{target:,.2f}")
+            with open(os.path.join(output_dir, f"input_data_{suffix}_target.txt"), "w") as target_file:
+                for idx, val in enumerate(self.target_data):
+                    target_file.write(f"target_data[{idx:>3}]={val:,.2f}\n")
 
 
 class DataToFit:

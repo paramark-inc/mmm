@@ -42,7 +42,8 @@ def test_print_outliers(output_dir):
         target_data=target_values,
         target_name="Sales"
     )
-    # input_data.dump()
+    input_data.dump(output_dir=output_dir, suffix="brief", verbose=True)
+    input_data.dump(output_dir=output_dir, suffix="detailed", verbose=False)
 
     print_outliers(input_data=input_data, output_dir=output_dir, suffix="test")
 
