@@ -7,6 +7,16 @@ from ..constants import constants
 from ..model.model import DataToFit
 
 
+def _robust_scaling_divide_operation(x):
+    """
+    Scaling divide operation that is robust to zero values (unlike jnp.mean).
+
+    :param x: array of values
+    :return: sum / count_of_positive_values
+    """
+    return x.sum() / (x > 0).sum()
+
+
 def make_data_to_fit(input_data):
     """
     Generate a DataToFit instance from an InputData instance
@@ -24,12 +34,12 @@ def make_data_to_fit(input_data):
     extra_features_test = input_data.extra_features_data[split_point:, :]
 
     # Scale data (ignoring the zeroes in the media data)
-    media_scaler = preprocessing.CustomScaler(divide_operation=lambda x: x.sum() / (x > 0).sum())
-    extra_features_scaler = preprocessing.CustomScaler(divide_operation=jnp.mean)
-    target_scaler = preprocessing.CustomScaler(divide_operation=jnp.mean)
+    media_scaler = preprocessing.CustomScaler(divide_operation=_robust_scaling_divide_operation)
+    extra_features_scaler = preprocessing.CustomScaler(divide_operation=_robust_scaling_divide_operation)
+    target_scaler = preprocessing.CustomScaler(divide_operation=_robust_scaling_divide_operation)
 
     # scale cost up by N since fit() will divide it by number of time periods
-    media_cost_scaler = preprocessing.CustomScaler(divide_operation=jnp.mean)
+    media_cost_scaler = preprocessing.CustomScaler(divide_operation=_robust_scaling_divide_operation)
 
     media_data_train_scaled = media_scaler.fit_transform(media_data_train)
     media_data_test_scaled = media_scaler.fit_transform(media_data_test)
