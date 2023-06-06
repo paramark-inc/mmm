@@ -56,12 +56,23 @@ def make_data_to_fit(input_data):
     )
     media_costs_scaled = media_cost_scaler.fit_transform(costs_fixup)
 
-    return DataToFit(media_data_train_scaled=media_data_train_scaled, media_data_test_scaled=media_data_test_scaled,
-                     media_scaler=media_scaler, extra_features_train_scaled=extra_features_train_scaled,
-                     extra_features_test_scaled=extra_features_test_scaled, extra_features_scaler=extra_features_scaler,
-                     media_costs_scaled=media_costs_scaled, media_costs_scaler=media_cost_scaler,
-                     target_train_scaled=target_train_scaled, target_test_scaled=target_test_scaled,
-                     target_scaler=target_scaler)
+    return DataToFit(
+        date_strs=input_data.date_strs,
+        media_data_train_scaled=media_data_train_scaled,
+        media_data_test_scaled=media_data_test_scaled,
+        media_scaler=media_scaler,
+        media_costs_scaled=media_costs_scaled,
+        media_costs_scaler=media_cost_scaler,
+        media_names=input_data.media_names,
+        extra_features_train_scaled=extra_features_train_scaled,
+        extra_features_test_scaled=extra_features_test_scaled,
+        extra_features_scaler=extra_features_scaler,
+        extra_features_names=input_data.extra_features_names,
+        target_train_scaled=target_train_scaled,
+        target_test_scaled=target_test_scaled,
+        target_scaler=target_scaler,
+        target_name=input_data.target_name
+    )
 
 
 def fit_lightweight_mmm(input_data, data_to_fit, model_name, degrees_seasonality=2):

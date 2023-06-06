@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pandas as pd
 
 from ..constants import constants
 
@@ -91,16 +92,18 @@ class InputData:
             target_name=input_data.target_name
         )
 
-    def __init__(self,
-                 date_strs,
-                 time_granularity,
-                 media_data,
-                 media_costs,
-                 media_names,
-                 extra_features_data,
-                 extra_features_names,
-                 target_data,
-                 target_name):
+    def __init__(
+            self,
+            date_strs,
+            time_granularity,
+            media_data,
+            media_costs,
+            media_names,
+            extra_features_data,
+            extra_features_names,
+            target_data,
+            target_name
+    ):
         """
         :param date_strs: 1-d numpy array of labels for each time series data point
         :param time_granularity: string constant describing the granularity of the time series data (
@@ -179,17 +182,74 @@ class DataToFit:
     * scaled to be smaller values for better accuracy from the Bayesian model
     """
 
-    def __init__(self, media_data_train_scaled, media_data_test_scaled, media_scaler, extra_features_train_scaled,
-                 extra_features_test_scaled, extra_features_scaler, media_costs_scaled, media_costs_scaler,
-                 target_train_scaled, target_test_scaled, target_scaler):
+    def __init__(
+            self,
+            date_strs,
+            media_data_train_scaled,
+            media_data_test_scaled,
+            media_scaler,
+            media_costs_scaled,
+            media_costs_scaler,
+            media_names,
+            extra_features_train_scaled,
+            extra_features_test_scaled,
+            extra_features_scaler,
+            extra_features_names,
+            target_train_scaled,
+            target_test_scaled,
+            target_scaler,
+            target_name
+    ):
+        self.date_strs = date_strs
         self.media_data_train_scaled = media_data_train_scaled
         self.media_data_test_scaled = media_data_test_scaled
         self.media_scaler = media_scaler
+        self.media_costs_scaled = media_costs_scaled
+        self.media_costs_scaler = media_costs_scaler
+        self.media_names = media_names
         self.extra_features_train_scaled = extra_features_train_scaled
         self.extra_features_test_scaled = extra_features_test_scaled
         self.extra_features_scaler = extra_features_scaler
-        self.media_costs_scaled = media_costs_scaled
-        self.media_costs_scaler = media_costs_scaler
+        self.extra_features_names = extra_features_names
         self.target_train_scaled = target_train_scaled
         self.target_test_scaled = target_test_scaled
         self.target_scaler = target_scaler
+        self.target_name = target_name
+
+    def to_data_frame(self):
+        """
+        :return: (per-observation df, per-channel df) DataFrames to view DataToFit data.
+                 All arrays are deep copies.
+        """
+        observation_data_by_column_name = {}
+
+        media_data = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
+        for media_idx in range(media_data.shape[1]):
+            col_name = f"{self.media_names[media_idx]} volume"
+            observation_data_by_column_name[col_name] = media_data[:, media_idx]
+
+        extra_features_data = np.vstack((self.extra_features_train_scaled, self.extra_features_test_scaled))
+        for extra_features_idx in range(extra_features_data.shape[1]):
+            col_name = self.extra_features_names[extra_features_idx]
+            observation_data_by_column_name[col_name] = extra_features_data[:, extra_features_idx]
+
+        target_data = np.hstack((self.target_train_scaled, self.target_test_scaled))
+        observation_data_by_column_name[self.target_name] = target_data
+
+        per_observation_df = pd.DataFrame(
+            data=observation_data_by_column_name,
+            index=self.date_strs,
+            dtype=np.float64,
+            copy=True
+        )
+
+        channel_data_by_column_name = {"Cost": self.media_costs_scaled}
+
+        per_channel_df = pd.DataFrame(
+            data=channel_data_by_column_name,
+            index=self.media_names,
+            dtype=np.float64,
+            copy=True
+        )
+
+        return per_observation_df, per_channel_df
