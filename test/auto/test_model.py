@@ -10,7 +10,7 @@ from ...model.model import InputData
 class ModelTestCase(unittest.TestCase):
 
     def test_to_data_frame(self):
-        date_strs = np.array(["1/1", "1/2", "1/3"])
+        date_strs = np.array(["1/1/2022", "1/2/2022", "1/3/2022"])
 
         media_data = np.array(
             [[10., 100.],
@@ -55,6 +55,7 @@ class ModelTestCase(unittest.TestCase):
 
         self.assertEqual(3, per_observation_df.shape[0])
         self.assertEqual(2 + 3 + 1, per_observation_df.shape[1])
+        self.assertAlmostEqual(data_to_fit_media_data[1, 1], per_observation_df.loc["2022-01-02", "Channel2 volume"])
         self.assertAlmostEqual(
             data_to_fit_media_data[:, 0].sum(),
             per_observation_df["Channel1 volume"].sum(),

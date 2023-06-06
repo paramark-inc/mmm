@@ -236,9 +236,10 @@ class DataToFit:
         target_data = np.hstack((self.target_train_scaled, self.target_test_scaled))
         observation_data_by_column_name[self.target_name] = target_data
 
+        # TODO push conversion to datetime upstream so that it is common across all data sets
         per_observation_df = pd.DataFrame(
             data=observation_data_by_column_name,
-            index=self.date_strs,
+            index=pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
             dtype=np.float64,
             copy=True
         )
