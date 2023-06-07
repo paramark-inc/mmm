@@ -288,25 +288,32 @@ class DataToFit:
         self.target_scaler = target_scaler
         self.target_name = target_name
 
-    def to_data_frame(self):
+    def to_data_frame(self, unscaled=False):
         """
+        :param unscaled: True to unscale the data, False otherwise
         :return: (per-observation df, per-channel df) DataFrames to view DataToFit data.
                  All arrays are deep copies.
         """
         observation_data_by_column_name = {}
 
-        media_data = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
-        for media_idx in range(media_data.shape[1]):
+        media_data_scaled = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
+        media_data_unscaled = self.media_scaler.inverse_transform(media_data_scaled)
+        for media_idx in range(media_data_scaled.shape[1]):
             col_name = f"{self.media_names[media_idx]} volume"
-            observation_data_by_column_name[col_name] = media_data[:, media_idx]
+            media_data_touse = media_data_unscaled if unscaled else media_data_scaled
+            observation_data_by_column_name[col_name] = media_data_touse[:, media_idx]
 
-        extra_features_data = np.vstack((self.extra_features_train_scaled, self.extra_features_test_scaled))
-        for extra_features_idx in range(extra_features_data.shape[1]):
+        extra_features_data_scaled = np.vstack((self.extra_features_train_scaled, self.extra_features_test_scaled))
+        extra_features_data_unscaled = self.extra_features_scaler.inverse_transform(extra_features_data_scaled)
+        for extra_features_idx in range(extra_features_data_scaled.shape[1]):
             col_name = self.extra_features_names[extra_features_idx]
-            observation_data_by_column_name[col_name] = extra_features_data[:, extra_features_idx]
+            extra_features_data_touse = extra_features_data_unscaled if unscaled else extra_features_data_scaled
+            observation_data_by_column_name[col_name] = extra_features_data_touse[:, extra_features_idx]
 
-        target_data = np.hstack((self.target_train_scaled, self.target_test_scaled))
-        observation_data_by_column_name[self.target_name] = target_data
+        target_data_scaled = np.hstack((self.target_train_scaled, self.target_test_scaled))
+        target_data_unscaled = self.target_scaler.inverse_transform(target_data_scaled)
+        target_data_touse = target_data_unscaled if unscaled else target_data_scaled
+        observation_data_by_column_name[self.target_name] = target_data_touse
 
         # TODO push conversion to datetime upstream so that it is common across all data sets
         per_observation_df = pd.DataFrame(
@@ -316,7 +323,9 @@ class DataToFit:
             copy=True
         )
 
-        channel_data_by_column_name = {"Cost": self.media_costs_scaled}
+        media_costs_unscaled = self.media_costs_scaler.inverse_transform(self.media_costs_scaled)
+        media_costs_touse = media_costs_unscaled if unscaled else self.media_costs_scaled
+        channel_data_by_column_name = {"Cost": media_costs_touse}
 
         per_channel_df = pd.DataFrame(
             data=channel_data_by_column_name,
