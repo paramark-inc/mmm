@@ -1,8 +1,10 @@
 import numpy as np
+import jax.numpy as jnp
 import os
 import pandas as pd
 
 from ..constants import constants
+from ..impl.lightweight_mmm.lightweight_mmm import preprocessing
 
 
 class InputData:
@@ -181,6 +183,76 @@ class DataToFit:
     * split into train and test data set
     * scaled to be smaller values for better accuracy from the Bayesian model
     """
+
+    @staticmethod
+    def _robust_scaling_divide_operation(x):
+        """
+        Scaling divide operation that is robust to zero values (unlike jnp.mean).
+
+        :param x: array of values
+        :return: sum / count_of_positive_values
+        """
+        return x.sum() / (x > 0).sum()
+
+    @staticmethod
+    def from_input_data(input_data):
+        """
+        Generate a DataToFit instance from an InputData instance
+        :param input_data: InputData instance
+        :return: DataToFit instance
+        """
+        data_size = input_data.media_data.shape[0]
+
+        split_point = data_size - data_size // 10
+        media_data_train = input_data.media_data[:split_point, :]
+        media_data_test = input_data.media_data[split_point:, :]
+        target_train = input_data.target_data[:split_point]
+        target_test = input_data.target_data[split_point:]
+        extra_features_train = input_data.extra_features_data[:split_point, :]
+        extra_features_test = input_data.extra_features_data[split_point:, :]
+
+        # Scale data (ignoring the zeroes in the media data).  Call fit_transform only the first time because only one
+        # scaling constant is stored in the scaler.
+        media_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+        extra_features_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+        target_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+
+        # scale cost up by N since fit() will divide it by number of time periods
+        media_cost_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+
+        media_data_train_scaled = media_scaler.fit_transform(media_data_train)
+        media_data_test_scaled = media_scaler.transform(media_data_test)
+        extra_features_train_scaled = extra_features_scaler.fit_transform(extra_features_train)
+        extra_features_test_scaled = extra_features_scaler.transform(extra_features_test)
+        target_train_scaled = target_scaler.fit_transform(target_train)
+        target_test_scaled = target_scaler.transform(target_test)
+
+        # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
+        # constraint on all values.
+        costs_fixup = jnp.where(
+            input_data.media_costs > 0.0,
+            input_data.media_costs,
+            0.00001
+        )
+        media_costs_scaled = media_cost_scaler.fit_transform(costs_fixup)
+
+        return DataToFit(
+            date_strs=input_data.date_strs,
+            media_data_train_scaled=media_data_train_scaled,
+            media_data_test_scaled=media_data_test_scaled,
+            media_scaler=media_scaler,
+            media_costs_scaled=media_costs_scaled,
+            media_costs_scaler=media_cost_scaler,
+            media_names=input_data.media_names,
+            extra_features_train_scaled=extra_features_train_scaled,
+            extra_features_test_scaled=extra_features_test_scaled,
+            extra_features_scaler=extra_features_scaler,
+            extra_features_names=input_data.extra_features_names,
+            target_train_scaled=target_train_scaled,
+            target_test_scaled=target_test_scaled,
+            target_scaler=target_scaler,
+            target_name=input_data.target_name
+        )
 
     def __init__(
             self,

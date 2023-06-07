@@ -1,13 +1,77 @@
 import numpy as np
+from numpy.testing import assert_array_equal, assert_array_almost_equal
 import unittest
 
-from ...constants import constants
+from datetime import date, timedelta
 
-from ...fit.fit import make_data_to_fit
-from ...model.model import InputData
+from ...constants import constants
+from ...model.model import InputData, DataToFit
 
 
 class ModelTestCase(unittest.TestCase):
+
+    @staticmethod
+    def _generate_test_input_data():
+        date_strs = [
+            (date.fromisoformat("2022-01-01") + timedelta(days=idx)).strftime("%-m/%-d/%Y")
+            for idx in range(100)
+        ]
+
+        # 100 observations * 2 channels
+        media_data = np.arange(100 * 2).astype(np.float64).reshape((100, 2))
+        media_costs = np.arange(2).astype(np.float64) * 1000.
+
+        # 100 observations * 3 features
+        extra_features_data = (np.arange(100 * 3).astype(np.float64) * 2.).reshape((100, 3))
+
+        target_data = np.arange(100).astype(np.float64) * 100.
+
+        return InputData(
+            date_strs=np.array(date_strs),
+            time_granularity=constants.GRANULARITY_DAILY,
+            media_data=media_data,
+            media_costs=media_costs,
+            media_names=["Channel1", "Channel2"],
+            extra_features_data=extra_features_data,
+            extra_features_names=["Feature1", "Feature2", "Feature3"],
+            target_data=target_data,
+            target_name="Target"
+        )
+
+    # noinspection PyMethodMayBeStatic
+    def test_make_data_to_fit(self):
+        input_data = ModelTestCase._generate_test_input_data()
+        data_to_fit = DataToFit.from_input_data(input_data)
+        assert_array_equal(data_to_fit.date_strs, input_data.date_strs)
+
+        data_to_fit_media_data = np.vstack(
+            (data_to_fit.media_data_train_scaled, data_to_fit.media_data_test_scaled)
+        )
+        data_to_fit_media_data_unscaled = data_to_fit.media_scaler.inverse_transform(
+            data_to_fit_media_data
+        )
+        assert_array_almost_equal(data_to_fit_media_data_unscaled, input_data.media_data, decimal=3)
+
+        data_to_fit_media_costs_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
+            data_to_fit.media_costs_scaled
+        )
+        assert_array_almost_equal(data_to_fit_media_costs_unscaled, input_data.media_costs, decimal=3)
+
+        data_to_fit_extra_features_data = np.vstack(
+            (data_to_fit.extra_features_train_scaled, data_to_fit.extra_features_test_scaled)
+        )
+        data_to_fit_extra_features_data_unscaled = data_to_fit.extra_features_scaler.inverse_transform(
+            data_to_fit_extra_features_data
+        )
+        assert_array_almost_equal(data_to_fit_extra_features_data_unscaled, input_data.extra_features_data, decimal=3)
+
+        data_to_fit_target_data = np.hstack(
+            (data_to_fit.target_train_scaled, data_to_fit.target_test_scaled)
+        )
+        data_to_fit_target_data_unscaled = data_to_fit.target_scaler.inverse_transform(
+            data_to_fit_target_data
+        )
+        assert_array_almost_equal(data_to_fit_target_data_unscaled, input_data.target_data, decimal=3)
 
     def test_to_data_frame(self):
         date_strs = np.array(["1/1/2022", "1/2/2022", "1/3/2022"])
@@ -42,7 +106,7 @@ class ModelTestCase(unittest.TestCase):
             target_name="Target"
         )
 
-        data_to_fit = make_data_to_fit(input_data)
+        data_to_fit = DataToFit.from_input_data(input_data)
         data_to_fit_media_data = np.vstack(
             (data_to_fit.media_data_train_scaled, data_to_fit.media_data_test_scaled)
         )
