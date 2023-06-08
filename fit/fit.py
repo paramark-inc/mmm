@@ -27,7 +27,6 @@ def fit_lightweight_mmm(data_to_fit, model_name, degrees_seasonality=2):
         extra_features = data_to_fit.extra_features_train_scaled
 
     # number_chains=1 because my laptop has only one CPU (jax.local_device_count())
-    # TODO degrees_seasonality
     mmm.fit(media=data_to_fit.media_data_train_scaled,
             degrees_seasonality=degrees_seasonality,
             seasonality_frequency=365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52,
