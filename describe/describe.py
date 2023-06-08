@@ -89,9 +89,14 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
     :param results_dir: Directory to write plots to
     :return: None
     """
+    if data_to_fit.extra_features_test_scaled.shape[1] == 0:
+        extra_features = None
+    else:
+        extra_features = data_to_fit.extra_features_test_scaled
+        
     prediction = mmm.predict(
         media=data_to_fit.media_data_test_scaled,
-        extra_features=data_to_fit.extra_features_test_scaled,
+        extra_features=extra_features,
         target_scaler=data_to_fit.target_scaler
     )
 
