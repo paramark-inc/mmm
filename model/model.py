@@ -238,6 +238,7 @@ class DataToFit:
 
         return DataToFit(
             date_strs=input_data.date_strs,
+            time_granularity=input_data.time_granularity,
             media_data_train_scaled=media_data_train_scaled,
             media_data_test_scaled=media_data_test_scaled,
             media_scaler=media_scaler,
@@ -257,6 +258,7 @@ class DataToFit:
     def __init__(
             self,
             date_strs,
+            time_granularity,
             media_data_train_scaled,
             media_data_test_scaled,
             media_scaler,
@@ -273,6 +275,7 @@ class DataToFit:
             target_name
     ):
         self.date_strs = date_strs
+        self.time_granularity = time_granularity
         self.media_data_train_scaled = media_data_train_scaled
         self.media_data_test_scaled = media_data_test_scaled
         self.media_scaler = media_scaler

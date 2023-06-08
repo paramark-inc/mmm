@@ -3,11 +3,10 @@ from ..impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
 from ..constants import constants
 
 
-def fit_lightweight_mmm(input_data, data_to_fit, model_name, degrees_seasonality=2):
+def fit_lightweight_mmm(data_to_fit, model_name, degrees_seasonality=2):
     """
     fit a lightweight mmm model to input_data
 
-    :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
     :param model_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_MODELNAME_XXX)
     :param degrees_seasonality: degrees of seasonality to pass through to lw MMM
@@ -31,9 +30,9 @@ def fit_lightweight_mmm(input_data, data_to_fit, model_name, degrees_seasonality
     # TODO degrees_seasonality
     mmm.fit(media=data_to_fit.media_data_train_scaled,
             degrees_seasonality=degrees_seasonality,
-            seasonality_frequency=365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52,
-            weekday_seasonality=True if input_data.time_granularity == constants.GRANULARITY_DAILY else False,
-            media_names=input_data.media_names,
+            seasonality_frequency=365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52,
+            weekday_seasonality=True if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else False,
+            media_names=data_to_fit.media_names,
             extra_features=extra_features,
             media_prior=data_to_fit.media_costs_scaled,
             target=data_to_fit.target_train_scaled,

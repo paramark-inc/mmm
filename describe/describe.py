@@ -35,13 +35,15 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     :param results_dir: directory to write plot files to
     :return:
     """
+    # TODO remove input_data from the signature for this function.  We cannot do that at present because we
+    # rely on it for the true unscaled costs, since we are "rounding up" zero costs when making the DataToFit
     mmm.print_summary()
     plt = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
     output_fname = os.path.join(results_dir, "model_fit.png")
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
 
-    plt = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=input_data.media_names)
+    plt = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "media_posteriors.png")
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
@@ -62,18 +64,18 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
         target_scaler=data_to_fit.target_scaler
     )
 
-    plt = plot_bars_media_metrics(metric=media_effect_hat, channel_names=input_data.media_names)
+    plt = plot_bars_media_metrics(metric=media_effect_hat, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "media_effect_hat.png")
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
 
-    plt = plot_bars_media_metrics(metric=roi_hat, channel_names=input_data.media_names)
+    plt = plot_bars_media_metrics(metric=roi_hat, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "roi_hat.png")
     plt.savefig(output_fname)
     print(f"wrote {output_fname}")
 
     plt = plot_media_baseline_contribution_area_plot(
-        media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=input_data.media_names
+        media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=data_to_fit.media_names
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
     plt.savefig(output_fname)
@@ -93,7 +95,7 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         extra_features = None
     else:
         extra_features = data_to_fit.extra_features_test_scaled
-        
+
     prediction = mmm.predict(
         media=data_to_fit.media_data_test_scaled,
         extra_features=extra_features,
