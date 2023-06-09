@@ -29,7 +29,7 @@ class InputData:
                   target_name):
         num_observations = date_strs.shape[0]
 
-        assert time_granularity in (constants.GRANULARITY_DAILY, constants.GRANULARITY_DAILY), f"{time_granularity}"
+        assert time_granularity in (constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY), f"{time_granularity}"
 
         assert 2 == media_data.ndim, f"{media_data.ndim}"
         assert num_observations == media_data.shape[0], f"{num_observations} {media_data.shape[0]}"
@@ -175,6 +175,73 @@ class InputData:
             with open(os.path.join(output_dir, f"input_data_{suffix}_target.txt"), "w") as target_file:
                 for idx, val in enumerate(self.target_data):
                     target_file.write(f"target_data[{idx:>3}]={val:,.2f}\n")
+
+    @staticmethod
+    def _group_by_week(idx):
+        """
+        pandas groupby callback to use for grouping rows into groups of 7
+        :param idx: row index
+        :return: group index
+        """
+        return idx // 7
+
+    def clone_as_weekly(self):
+        """
+        Compress from daily form to weekly form.  The data will be grouped into groups of 7 rows, starting with the
+        first 7 rows, and discarding the last group of less than 7 rows.  This means that the groups are aligned to
+        the day of week for the first row, not Sunday.
+
+        :return: new InputData instance, with weekly data
+        """
+        assert self.time_granularity == constants.GRANULARITY_DAILY
+
+        # we need to trim one partial week off the end if the data is not an even number of weeks
+        needs_cut_last = False if self.media_data.shape[0] % 7 == 0 else True
+
+        date_strs_weekly = self.date_strs.copy()[::7]
+
+        media_data_dict = {name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)}
+        media_df_daily = pd.DataFrame(data=media_data_dict)
+        media_df_weekly = media_df_daily.groupby(by=InputData._group_by_week).sum()
+        assert media_df_weekly.columns.tolist() == self.media_names
+        assert media_df_weekly.shape[0] == date_strs_weekly.shape[0], (
+            f"{media_df_weekly.shape},{date_strs_weekly.shape}"
+        )
+
+        extra_features_data_dict = {name: self.extra_features_data[:, idx] for idx, name in
+                                    enumerate(self.extra_features_names)}
+        extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
+        extra_features_df_weekly = extra_features_df_daily.groupby(by=InputData._group_by_week).sum()
+        assert extra_features_df_weekly.columns.tolist() == self.extra_features_names
+        assert extra_features_df_weekly.shape[0] == date_strs_weekly.shape[0], (
+            f"{extra_features_df_weekly.shape},{date_strs_weekly.shape}"
+        )
+
+        target_data_dict = {self.target_name: self.target_data}
+        target_df_daily = pd.DataFrame(data=target_data_dict)
+        target_df_weekly = target_df_daily.groupby(by=InputData._group_by_week).sum()
+        assert target_df_weekly.shape[0] == date_strs_weekly.shape[0], (
+            f"{target_df_weekly.shape},{date_strs_weekly.shape}"
+        )
+
+        if needs_cut_last:
+            date_strs_weekly = date_strs_weekly[:-1]
+            media_df_weekly = media_df_weekly[:-1]
+            extra_features_df_weekly = extra_features_df_weekly[:-1]
+            target_df_weekly = target_df_weekly[:-1]
+
+        return InputData(
+            date_strs=date_strs_weekly,
+            time_granularity=constants.GRANULARITY_WEEKLY,
+            media_data=media_df_weekly.to_numpy(),
+            media_costs=self.media_costs.copy(),
+            media_names=self.media_names.copy(),
+            extra_features_data=extra_features_df_weekly.to_numpy(),
+            extra_features_names=self.extra_features_names.copy(),
+            # DataFrame returns a 2D array even when there's only one column
+            target_data=target_df_weekly.to_numpy()[:, 0],
+            target_name=self.target_name
+        )
 
 
 class DataToFit:

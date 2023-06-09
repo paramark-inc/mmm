@@ -130,6 +130,24 @@ class ModelTestCase(unittest.TestCase):
         self.assertEqual(2, per_channel_df.shape[0])
         assert_array_almost_equal(per_channel_df["Cost"], input_data.media_costs, decimal=3)
 
+    def test_clone_as_weekly(self):
+        input_data = ModelTestCase._generate_test_input_data()
+        input_data_weekly = input_data.clone_as_weekly()
+
+        self.assertEqual(14, input_data_weekly.date_strs.shape[0])
+        self.assertEqual(constants.GRANULARITY_WEEKLY, input_data_weekly.time_granularity)
+        self.assertEqual(14, input_data_weekly.media_data.shape[0])
+        assert_array_almost_equal(input_data.media_data[0:98, :].sum(axis=0), input_data_weekly.media_data.sum(axis=0))
+        assert_array_equal(input_data.media_costs, input_data_weekly.media_costs)
+        assert_array_equal(input_data.media_names, input_data_weekly.media_names)
+        self.assertEqual(14, input_data_weekly.extra_features_data.shape[0])
+        assert_array_almost_equal(
+            input_data.extra_features_data[0:98, :].sum(axis=0), input_data_weekly.extra_features_data.sum(axis=0)
+        )
+        assert_array_equal(input_data.extra_features_names, input_data_weekly.extra_features_names)
+        self.assertEqual(14, input_data_weekly.target_data.shape[0])
+        self.assertAlmostEqual(input_data.target_data[0:98].sum(), input_data_weekly.target_data.sum())
+
 
 if __name__ == '__main__':
     unittest.main()
