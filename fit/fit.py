@@ -3,13 +3,16 @@ from ..impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
 from ..constants import constants
 
 
-def fit_lightweight_mmm(data_to_fit, model_name, degrees_seasonality=2):
+# noinspection GrazieInspection
+def fit_lightweight_mmm(data_to_fit, model_name, degrees_seasonality=2, number_warmup=2000, number_samples=2000):
     """
     fit a lightweight mmm model to input_data
 
     :param data_to_fit: DataToFit instance
     :param model_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_MODELNAME_XXX)
-    :param degrees_seasonality: degrees of seasonality to pass through to lw MMM
+    :param degrees_seasonality: degrees of seasonality to pass through to lightweightMMM
+    :param number_warmup to pass through to lightweightMMM
+    :param number_samples to pass through to lightweightMMM
     :return: lightweightMMM instance
     """
     assert model_name in (
@@ -35,8 +38,8 @@ def fit_lightweight_mmm(data_to_fit, model_name, degrees_seasonality=2):
             extra_features=extra_features,
             media_prior=data_to_fit.media_costs_scaled,
             target=data_to_fit.target_train_scaled,
-            number_warmup=2000,
-            number_samples=2000,
+            number_warmup=number_warmup,
+            number_samples=number_samples,
             number_chains=1)
 
     return mmm
