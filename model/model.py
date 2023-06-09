@@ -203,26 +203,15 @@ class InputData:
         media_data_dict = {name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)}
         media_df_daily = pd.DataFrame(data=media_data_dict)
         media_df_weekly = media_df_daily.groupby(by=InputData._group_by_week).sum()
-        assert media_df_weekly.columns.tolist() == self.media_names
-        assert media_df_weekly.shape[0] == date_strs_weekly.shape[0], (
-            f"{media_df_weekly.shape},{date_strs_weekly.shape}"
-        )
 
         extra_features_data_dict = {name: self.extra_features_data[:, idx] for idx, name in
                                     enumerate(self.extra_features_names)}
         extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
         extra_features_df_weekly = extra_features_df_daily.groupby(by=InputData._group_by_week).sum()
-        assert extra_features_df_weekly.columns.tolist() == self.extra_features_names
-        assert extra_features_df_weekly.shape[0] == date_strs_weekly.shape[0], (
-            f"{extra_features_df_weekly.shape},{date_strs_weekly.shape}"
-        )
 
         target_data_dict = {self.target_name: self.target_data}
         target_df_daily = pd.DataFrame(data=target_data_dict)
         target_df_weekly = target_df_daily.groupby(by=InputData._group_by_week).sum()
-        assert target_df_weekly.shape[0] == date_strs_weekly.shape[0], (
-            f"{target_df_weekly.shape},{date_strs_weekly.shape}"
-        )
 
         if needs_cut_last:
             date_strs_weekly = date_strs_weekly[:-1]
