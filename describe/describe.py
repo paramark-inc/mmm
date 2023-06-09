@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout
 import os
 
 from ..impl.lightweight_mmm.lightweight_mmm.plot import (
@@ -37,7 +38,13 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     """
     # TODO remove input_data from the signature for this function.  We cannot do that at present because we
     # rely on it for the true unscaled costs, since we are "rounding up" zero costs when making the DataToFit
-    mmm.print_summary()
+
+    output_fname = os.path.join(results_dir, "model_summary.txt")
+    with open(output_fname, 'w') as f:
+        with redirect_stdout(f):
+            mmm.print_summary()
+    print(f"wrote {output_fname}")
+
     plt = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
     output_fname = os.path.join(results_dir, "model_fit.png")
     plt.savefig(output_fname)
