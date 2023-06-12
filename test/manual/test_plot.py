@@ -36,7 +36,7 @@ def test_plot_all_metrics(output_dir):
     )
     # input_data.dump()
 
-    plot_all_metrics(input_data, output_dir)
+    plot_all_metrics(input_data, output_dir, "test")
 
 
 @click.command()

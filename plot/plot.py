@@ -3,10 +3,24 @@ import numpy as np
 import os
 
 
-def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, values):
-    axs[idx].set_title(chart_name)
-    axs[idx].set_xlabel(f"Time({granularity})")
-    axs[idx].plot(time_axis, values)
+def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, date_strs, values):
+    # add a primary X axis with the observation indices
+    ax = axs[idx]
+    ax.set_title(chart_name)
+    ax.set_xlabel(f"Time({granularity})")
+    ax.plot(time_axis, values)
+
+    xlim = ax.get_xlim()
+    ax.tick_params('x', labelbottom=True)
+
+    # add a second X axis with the date labels
+    ax2 = ax.twiny()
+    ax2.set_xlim(xlim)
+    ticks = [int(tick) for tick in ax.get_xticks() if tick >= 0. and int(tick) < date_strs.shape[0]]
+    ax2.set_xticks(ticks)
+    ax2.set_xticklabels([date_strs[tick] for tick in ticks])
+    ax2.set_xlabel("Date")
+    ax2.tick_params('x', labeltop=True, labelrotation=45)
 
 
 def plot_all_metrics(input_data, output_dir, suffix):
@@ -42,7 +56,7 @@ def plot_all_metrics(input_data, output_dir, suffix):
 
     for idx, (chart_name, values) in enumerate(charts):
         _plot_one_metric(axs=axs, idx=idx, chart_name=chart_name, granularity=input_data.time_granularity,
-                         time_axis=time_axis, values=values)
+                         time_axis=time_axis, date_strs=input_data.date_strs, values=values)
 
     # tight_layout will space the charts out evenly, vertically
     fig.tight_layout()
