@@ -94,6 +94,7 @@ class InputData:
             target_name=input_data.target_name
         )
 
+    # TODO change dates from strings to numpy datetimes to ensure common formatting
     def __init__(
             self,
             date_strs,
