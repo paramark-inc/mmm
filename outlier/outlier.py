@@ -126,7 +126,6 @@ def remove_outliers_from_input(input_data, media_data_outliers, extra_features_o
     assert removal_type in (constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN,
                             constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE), f"{removal_type}"
 
-    print(f"Removing outliers type={removal_type}")
     context = {
         "removal_type": removal_type,
         "old_input_data": input_data,

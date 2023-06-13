@@ -7,6 +7,7 @@ from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_media_channel_posteriors,
     plot_model_fit,
     plot_out_of_sample_model_fit,
+    # plot_prior_and_posterior,
     plot_response_curves
 )
 
@@ -36,31 +37,29 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     :param results_dir: directory to write plot files to
     :return:
     """
-    # TODO remove input_data from the signature for this function.  We cannot do that at present because we
-    # rely on it for the true unscaled costs, since we are "rounding up" zero costs when making the DataToFit
-
     output_fname = os.path.join(results_dir, "model_summary.txt")
     with open(output_fname, 'w') as f:
         with redirect_stdout(f):
             mmm.print_summary()
-    print(f"wrote {output_fname}")
 
-    plt = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
+    fig = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
     output_fname = os.path.join(results_dir, "model_fit.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
 
-    plt = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
+    fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "media_posteriors.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
 
-    plt = plot_response_curves(
+    fig = plot_response_curves(
         media_mix_model=mmm, media_scaler=data_to_fit.media_scaler, target_scaler=data_to_fit.target_scaler
     )
     output_fname = os.path.join(results_dir, "response_curves.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
+
+    # plot_prior_and_posterior is crashing when trying to generate the weekday plots
+    # fig = plot_prior_and_posterior(media_mix_model=mmm)
+    # output_fname = os.path.join(results_dir, "all_priors_and_posteriors.png")
+    # fig.savefig(output_fname)
 
     # Pass unscaled_costs instead of cost_scaler because we don't want get_posterior_metrics to unscale the
     # cost data.  This is because the cost scaler did not support zero values, so we had to replace the zero values
@@ -71,22 +70,19 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
         target_scaler=data_to_fit.target_scaler
     )
 
-    plt = plot_bars_media_metrics(metric=media_effect_hat, channel_names=data_to_fit.media_names)
+    fig = plot_bars_media_metrics(metric=media_effect_hat, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "media_effect_hat.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
 
-    plt = plot_bars_media_metrics(metric=roi_hat, channel_names=data_to_fit.media_names)
+    fig = plot_bars_media_metrics(metric=roi_hat, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "roi_hat.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
 
-    plt = plot_media_baseline_contribution_area_plot(
+    fig = plot_media_baseline_contribution_area_plot(
         media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=data_to_fit.media_names
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)
 
 
 def describe_mmm_prediction(mmm, data_to_fit, results_dir):
@@ -110,9 +106,8 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
     )
 
     target_test_unscaled = data_to_fit.target_scaler.inverse_transform(data_to_fit.target_test_scaled)
-    plt = plot_out_of_sample_model_fit(
+    fig = plot_out_of_sample_model_fit(
         out_of_sample_predictions=prediction, out_of_sample_target=target_test_unscaled
     )
     output_fname = os.path.join(results_dir, "out_of_sample_model_fit.png")
-    plt.savefig(output_fname)
-    print(f"wrote {output_fname}")
+    fig.savefig(output_fname)

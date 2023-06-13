@@ -63,4 +63,3 @@ def plot_all_metrics(input_data, output_dir, suffix):
 
     output_fname = os.path.join(output_dir, f"all_metrics_{suffix}.png")
     plt.savefig(output_fname)
-    print(f"wrote '{output_fname}'")
