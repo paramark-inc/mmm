@@ -161,13 +161,13 @@ class InputData:
                     dates_file.write(f"date_strs[{idx:>3}]={dstr:>5}\n")
 
             for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"input_data_{suffix}_{media_name.lower()}.txt"
+                media_fname = f"input_data_{suffix}_{media_name.lower().replace(' ', '_')}.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
                     for idx, val in enumerate(self.media_data[:, media_idx]):
                         media_data_file.write(f"media_data[{idx:>3}][{media_idx}]={val:,.2f}\n")
 
             for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                extra_features_fname = f"input_data_{suffix}_{extra_features_name.lower()}.txt"
+                extra_features_fname = f"input_data_{suffix}_{extra_features_name.lower().replace(' ', '_')}.txt"
                 with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
                     for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
                         extra_features_file.write(f"extra_features_data[{extra_features_idx:>3}][{idx}]={val:,.2f}\n")
@@ -241,13 +241,19 @@ class InputData:
             extra_features_df_weekly = extra_features_df_weekly[:-1]
             target_df_weekly = target_df_weekly[:-1]
 
+        extra_features_data = (
+            extra_features_df_weekly.to_numpy()
+            if extra_features_df_weekly.shape[1]
+            else np.ndarray(shape=(media_df_weekly.shape[0], 0), dtype=np.float64)
+        )
+
         return InputData(
             date_strs=date_strs_weekly,
             time_granularity=constants.GRANULARITY_WEEKLY,
             media_data=media_df_weekly.to_numpy(),
             media_costs=self.media_costs.copy(),
             media_names=self.media_names.copy(),
-            extra_features_data=extra_features_df_weekly.to_numpy(),
+            extra_features_data=extra_features_data,
             extra_features_names=self.extra_features_names.copy(),
             # DataFrame returns a 2D array even when there's only one column
             target_data=target_df_weekly.to_numpy()[:, 0],
