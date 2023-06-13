@@ -19,7 +19,7 @@ class ModelTestCase(unittest.TestCase):
 
         # n observations * 2 channels
         media_data = np.arange(observations * 2).astype(np.float64).reshape((observations, 2))
-        media_costs = np.arange(2).astype(np.float64) * 1000.
+        media_costs = np.arange(1, 3).astype(np.float64) * 1000.
 
         # n observations * 3 features
         extra_features_data = (np.arange(observations * 3).astype(np.float64) * 2.).reshape((observations, 3))

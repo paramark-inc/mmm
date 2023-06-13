@@ -1,5 +1,4 @@
 import numpy as np
-import jax.numpy as jnp
 import os
 import pandas as pd
 
@@ -286,12 +285,9 @@ class DataToFit:
 
         # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
         # constraint on all values.
-        costs_fixup = jnp.where(
-            input_data.media_costs > 0.0,
-            input_data.media_costs,
-            0.00001
-        )
-        media_costs_scaled = media_cost_scaler.fit_transform(costs_fixup)
+        for idx, cost in np.ndenumerate(input_data.media_costs):
+            assert cost > 0.0, f"Media channel {idx[0]} has zero cost"
+        media_costs_scaled = media_cost_scaler.fit_transform(input_data.media_costs)
 
         return DataToFit(
             date_strs=input_data.date_strs,
