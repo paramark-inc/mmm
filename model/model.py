@@ -176,6 +176,28 @@ class InputData:
                 for idx, val in enumerate(self.target_data):
                     target_file.write(f"target_data[{idx:>3}]={val:,.2f}\n")
 
+    def clone_and_add_extra_features(self, feature_names, feature_data):
+        """
+        Make a copy of this InputData instance and add an extra feature
+        :param feature_names: names to add (list of strings)
+        :param feature_data: data to add (2d numpy array of observation, features)
+        :return: new InputData instance
+        """
+        extra_features_names = self.extra_features_names + feature_names
+        extra_features_data = np.hstack((self.extra_features_data, feature_data))
+
+        return InputData(
+            date_strs=self.date_strs,
+            time_granularity=self.time_granularity,
+            media_data=self.media_data.copy(),
+            media_costs=self.media_costs.copy(),
+            media_names=self.media_names.copy(),
+            extra_features_data=extra_features_data,
+            extra_features_names=extra_features_names,
+            target_data=self.target_data.copy(),
+            target_name=self.target_name
+        )
+
     @staticmethod
     def _group_by_week(idx):
         """

@@ -167,6 +167,18 @@ class ModelTestCase(unittest.TestCase):
         self.assertEqual(14, input_data_weekly.target_data.shape[0])
         self.assertAlmostEqual(input_data.target_data.sum(), input_data_weekly.target_data.sum())
 
+    def test_clone_and_add_extra_features(self):
+        input_data = ModelTestCase._generate_test_input_data(observations=100)
+
+        # 100 observations * 2 features
+        new_feature_data = (np.arange(100 * 2).astype(np.float64) * 30.).reshape(100, 2)
+        new_input_data = input_data.clone_and_add_extra_features(["NewFeature1", "NewFeature2"], new_feature_data)
+
+        self.assertEqual(
+            ["Feature1", "Feature2", "Feature3", "NewFeature1", "NewFeature2"], new_input_data.extra_features_names
+        )
+        assert_array_almost_equal(new_feature_data, new_input_data.extra_features_data[:, 3:5])
+
 
 if __name__ == '__main__':
     unittest.main()
