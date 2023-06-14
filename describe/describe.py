@@ -1,4 +1,5 @@
 from contextlib import redirect_stdout
+import numpy as np
 import os
 
 from ..impl.lightweight_mmm.lightweight_mmm.plot import (
@@ -50,8 +51,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     output_fname = os.path.join(results_dir, "media_posteriors.png")
     fig.savefig(output_fname)
 
+    media_cost_per_unscaled_unit = input_data.media_costs / np.sum(input_data.media_data, axis=0)
     fig = plot_response_curves(
-        media_mix_model=mmm, media_scaler=data_to_fit.media_scaler, target_scaler=data_to_fit.target_scaler
+        media_mix_model=mmm,
+        media_scaler=data_to_fit.media_scaler,
+        target_scaler=data_to_fit.target_scaler,
+        prices=media_cost_per_unscaled_unit
     )
     output_fname = os.path.join(results_dir, "response_curves.png")
     fig.savefig(output_fname)
@@ -61,10 +66,6 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     # output_fname = os.path.join(results_dir, "all_priors_and_posteriors.png")
     # fig.savefig(output_fname)
 
-    # Pass unscaled_costs instead of cost_scaler because we don't want get_posterior_metrics to unscale the
-    # cost data.  This is because the cost scaler did not support zero values, so we had to replace the zero values
-    # with a small non-zero value.  For the purpose of this ROI calculation, we want to use the unscaled cost values
-    # to properly reflect the fact that ROI doesn't make sense for these channels.
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
         unscaled_costs=input_data.media_costs,
         target_scaler=data_to_fit.target_scaler
