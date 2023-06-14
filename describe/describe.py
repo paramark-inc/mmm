@@ -8,7 +8,7 @@ from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_media_channel_posteriors,
     plot_model_fit,
     plot_out_of_sample_model_fit,
-    # plot_prior_and_posterior,
+    plot_prior_and_posterior,
     plot_response_curves
 )
 
@@ -61,10 +61,9 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     output_fname = os.path.join(results_dir, "response_curves.png")
     fig.savefig(output_fname)
 
-    # plot_prior_and_posterior is crashing when trying to generate the weekday plots
-    # fig = plot_prior_and_posterior(media_mix_model=mmm)
-    # output_fname = os.path.join(results_dir, "all_priors_and_posteriors.png")
-    # fig.savefig(output_fname)
+    fig = plot_prior_and_posterior(media_mix_model=mmm)
+    output_fname = os.path.join(results_dir, "all_priors_and_posteriors.png")
+    fig.savefig(output_fname)
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
         unscaled_costs=input_data.media_costs,
