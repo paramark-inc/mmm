@@ -23,7 +23,11 @@ def fit_lightweight_mmm(
     :param results_dir: directory to write log output to
     :param degrees_seasonality: degrees of seasonality to pass through to lightweightMMM
     :param weekday_seasonality: if None, we will derive this parameter from the time_granularity;
-                                otherwise, use the value provided.
+                                otherwise, use the value provided.  For daily data, passing "False" will cause the
+                                model to omit the daily coefficients, which can be preferable if you are seeing too
+                                much day to day swing in the results.
+
+                                Do not pass a value if you have weekly data.
     :param number_warmup to pass through to lightweightMMM
     :param number_samples to pass through to lightweightMMM
     :return: lightweightMMM instance
