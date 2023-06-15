@@ -28,6 +28,32 @@ def describe_input_data(input_data, results_dir, suffix):
     print_outliers(input_data=input_data, output_dir=results_dir, suffix=suffix)
 
 
+def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
+    """
+    write posterior metrics to a file
+
+    :param input_data: InputData instance
+    :param media_effect_hat: see LightweightMMM.get_posterior_metrics
+    :param roi_hat: see LightweightMMM.get_posterior_metrics
+    :param results_dir: results directory
+    """
+    output_fname = os.path.join(results_dir, "media_effect_and_roi_results.txt")
+    with open(output_fname, 'w') as f:
+        for media_idx in range(input_data.media_data.shape[1]):
+            f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
+            f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.3f}\n")
+            f.write(f"median={np.median(media_effect_hat[:, media_idx]):,.3f}\n")
+            quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
+            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.3f}, {quantiles[1]:,.3f}]\n\n")
+
+        for media_idx in range(input_data.media_data.shape[1]):
+            f.write(f"{input_data.media_names[media_idx]} ROI:\n")
+            f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.3f}\n")
+            f.write(f"median={np.median(roi_hat[:, media_idx]):,.3f}\n")
+            quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
+            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.3f}, {quantiles[1]:,.3f}]\n\n")
+
+
 def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     """
     Plot and print diagnostic analyses of the MMM training data.
@@ -68,6 +94,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
         unscaled_costs=input_data.media_costs,
         target_scaler=data_to_fit.target_scaler
+    )
+    _dump_posterior_metrics(
+        input_data=input_data,
+        media_effect_hat=media_effect_hat,
+        roi_hat=roi_hat,
+        results_dir=results_dir
     )
 
     fig = plot_bars_media_metrics(metric=media_effect_hat, channel_names=data_to_fit.media_names)
