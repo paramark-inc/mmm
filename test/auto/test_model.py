@@ -40,6 +40,7 @@ class ModelTestCase(unittest.TestCase):
             extra_features_data=extra_features_data,
             extra_features_names=["Feature1", "Feature2", "Feature3"],
             target_data=target_data,
+            target_is_log_scale=False,
             target_name="Target"
         )
 
