@@ -90,6 +90,7 @@ class InputData:
             extra_features_data=extra_features_data_copy,
             extra_features_names=input_data.extra_features_names.copy(),
             target_data=target_data_copy,
+            target_is_log_scale=input_data.target_is_log_scale,
             target_name=input_data.target_name
         )
 
@@ -104,6 +105,7 @@ class InputData:
             extra_features_data,
             extra_features_names,
             target_data,
+            target_is_log_scale,
             target_name
     ):
         """
@@ -116,6 +118,7 @@ class InputData:
         :param extra_features_data: 2-d numpy array of float64 extra feature values [time, channel]
         :param extra_features_names: list of extra feature names
         :param target_data: 1-d numpy array of float64 target metric values
+        :param target_is_log_scale: True if target metric is log scale, False otherwise
         :param target_name: name of target metric
         """
         InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
@@ -132,6 +135,7 @@ class InputData:
         self.extra_features_names = extra_features_names
         self.target_data = target_data
         self.target_name = target_name
+        self.target_is_log_scale = target_is_log_scale
 
     def dump(self, output_dir, suffix, verbose=False):
         """
@@ -154,6 +158,7 @@ class InputData:
             for idx, media_cost in enumerate(self.media_costs):
                 summary_file.write(f"media_costs[{idx}]={media_cost:,.2f}\n")
             summary_file.write(f"\ntarget_name={self.target_name}\n")
+            summary_file.write(f"\ntarget_is_log_scale={self.target_is_log_scale}\n")
 
         if verbose:
             with open(os.path.join(output_dir, f"input_data_{suffix}_dates.txt"), "w") as dates_file:
@@ -200,6 +205,7 @@ class InputData:
             extra_features_data=extra_features_data,
             extra_features_names=extra_features_names,
             target_data=self.target_data.copy(),
+            target_is_log_scale=self.target_is_log_scale,
             target_name=self.target_name
         )
 
@@ -262,7 +268,29 @@ class InputData:
             extra_features_names=self.extra_features_names.copy(),
             # DataFrame returns a 2D array even when there's only one column
             target_data=target_df_weekly.to_numpy()[:, 0],
-            target_name=self.target_name
+            target_is_log_scale=self.target_is_log_scale,
+            target_name=self.target_name,
+        )
+
+    def clone_and_log_transform_target_data(self):
+        """
+        clone this input_data and log transform the target data.  Note that charts will show the log-transformed values.
+        You'll need to exp() them manually.
+        :return: new InputData instance
+        """
+        assert not self.target_is_log_scale
+
+        return InputData(
+            date_strs=self.date_strs.copy(),
+            time_granularity=self.time_granularity,
+            media_data=self.media_data.copy(),
+            media_costs=self.media_costs.copy(),
+            media_names=self.media_names.copy(),
+            extra_features_data=self.extra_features_data.copy(),
+            extra_features_names=self.extra_features_names.copy(),
+            target_data=np.log(self.target_data),
+            target_is_log_scale=True,
+            target_name=self.target_name + " (log-transformed)"
         )
 
 
@@ -337,6 +365,7 @@ class DataToFit:
             extra_features_names=input_data.extra_features_names,
             target_train_scaled=target_train_scaled,
             target_test_scaled=target_test_scaled,
+            target_is_log_scale=input_data.target_is_log_scale,
             target_scaler=target_scaler,
             target_name=input_data.target_name
         )
@@ -357,6 +386,7 @@ class DataToFit:
             extra_features_names,
             target_train_scaled,
             target_test_scaled,
+            target_is_log_scale,
             target_scaler,
             target_name
     ):
@@ -374,6 +404,7 @@ class DataToFit:
         self.extra_features_names = extra_features_names
         self.target_train_scaled = target_train_scaled
         self.target_test_scaled = target_test_scaled
+        self.target_is_log_scale = target_is_log_scale
         self.target_scaler = target_scaler
         self.target_name = target_name
 

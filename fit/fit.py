@@ -74,6 +74,7 @@ def fit_lightweight_mmm(
             extra_features=extra_features,
             media_prior=data_to_fit.media_costs_scaled,
             target=data_to_fit.target_train_scaled,
+            target_is_log_scale=data_to_fit.target_is_log_scale,
             number_warmup=number_warmup,
             number_samples=number_samples,
             number_chains=number_chains)
