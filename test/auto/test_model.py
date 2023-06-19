@@ -31,6 +31,7 @@ class ModelTestCase(unittest.TestCase):
             time_granularity=constants.GRANULARITY_DAILY,
             media_data=media_data,
             media_costs=media_costs,
+            media_priors=media_costs,
             media_names=["Channel1", "Channel2"],
             extra_features_data=extra_features_data,
             extra_features_names=["Feature1", "Feature2", "Feature3"],

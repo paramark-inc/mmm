@@ -102,12 +102,20 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
         results_dir=results_dir
     )
 
-    fig = plot_bars_media_metrics(metric=media_effect_hat, channel_names=data_to_fit.media_names)
-    output_fname = os.path.join(results_dir, "media_effect_hat.png")
+    fig = plot_bars_media_metrics(
+        metric=media_effect_hat,
+        metric_name="contribution percentage",
+        channel_names=data_to_fit.media_names
+    )
+    output_fname = os.path.join(results_dir, "media_contribution_by_channel.png")
     fig.savefig(output_fname)
 
-    fig = plot_bars_media_metrics(metric=roi_hat, channel_names=data_to_fit.media_names)
-    output_fname = os.path.join(results_dir, "roi_hat.png")
+    fig = plot_bars_media_metrics(
+        metric=roi_hat,
+        metric_name="ROI",
+        channel_names=data_to_fit.media_names
+    )
+    output_fname = os.path.join(results_dir, "roi_by_channel.png")
     fig.savefig(output_fname)
 
     fig = plot_media_baseline_contribution_area_plot(

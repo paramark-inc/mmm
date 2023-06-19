@@ -21,6 +21,7 @@ class InputData:
                   time_granularity,
                   media_data,
                   media_costs,
+                  media_priors,
                   media_names,
                   extra_features_data,
                   extra_features_names,
@@ -38,6 +39,14 @@ class InputData:
         assert 1 == media_costs.ndim, f"{media_costs.ndim}"
         assert num_channels == media_costs.shape[0], f"{num_channels} {media_costs.shape[0]}"
         assert np.float64 == media_costs.dtype, f"{np.float64} {media_costs.dtype}"
+
+        assert 1 == media_priors.ndim, f"{media_priors.ndim}"
+        assert num_channels == media_priors.shape[0], f"{num_channels} {media_priors.shape[0]}"
+        assert np.float64 == media_priors.dtype, f"{np.float64} {media_priors.dtype}"
+        # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
+        # constraint on all values.
+        for idx, prior in np.ndenumerate(media_priors):
+            assert prior > 0.0, f"Media channel {media_names[idx]} has zero prior"
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
@@ -86,6 +95,7 @@ class InputData:
             time_granularity=input_data.time_granularity,
             media_data=media_data_copy,
             media_costs=input_data.media_costs.copy(),
+            media_priors=input_data.media_priors.copy(),
             media_names=input_data.media_names.copy(),
             extra_features_data=extra_features_data_copy,
             extra_features_names=input_data.extra_features_names.copy(),
@@ -100,6 +110,7 @@ class InputData:
             time_granularity,
             media_data,
             media_costs,
+            media_priors,
             media_names,
             extra_features_data,
             extra_features_names,
@@ -112,6 +123,9 @@ class InputData:
                                  constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
         :param media_data: 2-d numpy array of float64 media data values [time,channel]
         :param media_costs: 1-d numpy array of float64 total media costs [channel]
+        :param media_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
+                             be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
+                             it makes sense to use a different value as the prior.
         :param media_names: list of media channel names
         :param extra_features_data: 2-d numpy array of float64 extra feature values [time, channel]
         :param extra_features_names: list of extra feature names
@@ -119,7 +133,7 @@ class InputData:
         :param target_name: name of target metric
         """
         InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
-                            media_costs=media_costs, media_names=media_names,
+                            media_costs=media_costs, media_priors=media_priors, media_names=media_names,
                             extra_features_data=extra_features_data, extra_features_names=extra_features_names,
                             target_data=target_data, target_name=target_name)
 
@@ -127,6 +141,7 @@ class InputData:
         self.time_granularity = time_granularity
         self.media_data = media_data
         self.media_costs = media_costs
+        self.media_priors = media_priors
         self.media_names = media_names
         self.extra_features_data = extra_features_data
         self.extra_features_names = extra_features_names
@@ -153,6 +168,9 @@ class InputData:
             summary_file.write("\nmedia_costs:\n")
             for idx, media_cost in enumerate(self.media_costs):
                 summary_file.write(f"media_costs[{idx}]={media_cost:,.2f}\n")
+            summary_file.write("\nmedia_priors:\n")
+            for idx, media_prior in enumerate(self.media_priors):
+                summary_file.write(f"media_priors[{idx}]={media_prior:,.2f}\n")
             summary_file.write(f"\ntarget_name={self.target_name}\n")
 
         if verbose:
@@ -196,6 +214,7 @@ class InputData:
             time_granularity=self.time_granularity,
             media_data=self.media_data.copy(),
             media_costs=self.media_costs.copy(),
+            media_priors=self.media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
             extra_features_names=extra_features_names,
@@ -257,6 +276,7 @@ class InputData:
             time_granularity=constants.GRANULARITY_WEEKLY,
             media_data=media_df_weekly.to_numpy(),
             media_costs=self.media_costs.copy(),
+            media_priors=self.media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
             extra_features_names=self.extra_features_names.copy(),
@@ -316,11 +336,8 @@ class DataToFit:
         target_train_scaled = target_scaler.fit_transform(target_train)
         target_test_scaled = target_scaler.transform(target_test)
 
-        # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
-        # constraint on all values.
-        for idx, cost in np.ndenumerate(input_data.media_costs):
-            assert cost > 0.0, f"Media channel {idx[0]} has zero cost"
-        media_costs_scaled = media_cost_scaler.fit_transform(input_data.media_costs)
+        media_priors_scaled = media_cost_scaler.fit_transform(input_data.media_priors)
+        media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
 
         return DataToFit(
             date_strs=input_data.date_strs,
@@ -329,6 +346,7 @@ class DataToFit:
             media_data_test_scaled=media_data_test_scaled,
             media_scaler=media_scaler,
             media_costs_scaled=media_costs_scaled,
+            media_priors_scaled=media_priors_scaled,
             media_costs_scaler=media_cost_scaler,
             media_names=input_data.media_names,
             extra_features_train_scaled=extra_features_train_scaled,
@@ -349,6 +367,7 @@ class DataToFit:
             media_data_test_scaled,
             media_scaler,
             media_costs_scaled,
+            media_priors_scaled,
             media_costs_scaler,
             media_names,
             extra_features_train_scaled,
@@ -366,6 +385,7 @@ class DataToFit:
         self.media_data_test_scaled = media_data_test_scaled
         self.media_scaler = media_scaler
         self.media_costs_scaled = media_costs_scaled
+        self.media_priors_scaled = media_priors_scaled
         self.media_costs_scaler = media_costs_scaler
         self.media_names = media_names
         self.extra_features_train_scaled = extra_features_train_scaled
@@ -412,9 +432,15 @@ class DataToFit:
             copy=True
         )
 
+        channel_data_by_column_name = {}
+
         media_costs_unscaled = self.media_costs_scaler.inverse_transform(self.media_costs_scaled)
         media_costs_touse = media_costs_unscaled if unscaled else self.media_costs_scaled
-        channel_data_by_column_name = {"Cost": media_costs_touse}
+        channel_data_by_column_name["Cost"] = media_costs_touse
+
+        media_priors_unscaled = self.media_costs_scaler.inverse_transform(self.media_priors_scaled)
+        media_priors_touse = media_priors_unscaled if unscaled else self.media_priors_scaled
+        channel_data_by_column_name["Prior"] = media_priors_touse
 
         per_channel_df = pd.DataFrame(
             data=channel_data_by_column_name,

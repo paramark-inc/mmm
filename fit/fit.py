@@ -61,7 +61,7 @@ def fit_lightweight_mmm(
         output_file.write(f"degrees_seasonality={degrees_seasonality}\n")
         output_file.write(f"seasonality_frequency={seasonality_frequency}\n")
         output_file.write(f"weekday_seasonality_touse={weekday_seasonality_touse}\n")
-        output_file.write(f"media_prior={data_to_fit.media_costs_scaled}\n")
+        output_file.write(f"media_prior={data_to_fit.media_priors_scaled}\n")
         output_file.write(f"number_warmup={number_warmup}\n")
         output_file.write(f"number_samples={number_samples}\n")
         output_file.write(f"number_chains={number_chains}\n")
@@ -72,7 +72,7 @@ def fit_lightweight_mmm(
             weekday_seasonality=weekday_seasonality_touse,
             media_names=data_to_fit.media_names,
             extra_features=extra_features,
-            media_prior=data_to_fit.media_costs_scaled,
+            media_prior=data_to_fit.media_priors_scaled,
             target=data_to_fit.target_train_scaled,
             number_warmup=number_warmup,
             number_samples=number_samples,
