@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import os
 import pandas as pd
@@ -312,7 +313,10 @@ class DataToFit:
         """
         data_size = input_data.media_data.shape[0]
 
-        split_point = data_size - data_size // 10
+        split_point = math.ceil(data_size * 0.9)
+        # split_point = math.ceil(data_size * 0.75)
+        # split_point = math.ceil(data_size * 0.66)
+        # split_point = math.ceil(data_size * 0.5)
         media_data_train = input_data.media_data[:split_point, :]
         media_data_test = input_data.media_data[split_point:, :]
         target_train = input_data.target_data[:split_point]
