@@ -96,6 +96,7 @@ class InputData:
             time_granularity=input_data.time_granularity,
             media_data=media_data_copy,
             media_costs=input_data.media_costs.copy(),
+            media_costs_by_row=input_data.media_costs_by_row.copy(),
             media_priors=input_data.media_priors.copy(),
             media_names=input_data.media_names.copy(),
             extra_features_data=extra_features_data_copy,
@@ -111,6 +112,7 @@ class InputData:
             time_granularity,
             media_data,
             media_costs,
+            media_costs_by_row,
             media_priors,
             media_names,
             extra_features_data,
@@ -124,6 +126,7 @@ class InputData:
                                  constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
         :param media_data: 2-d numpy array of float64 media data values [time,channel]
         :param media_costs: 1-d numpy array of float64 total media costs [channel]
+        :param media_costs_by_row: 2-d numpy array of float 64 media costs per day [time, channel]
         :param media_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
                              be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
                              it makes sense to use a different value as the prior.
@@ -142,6 +145,7 @@ class InputData:
         self.time_granularity = time_granularity
         self.media_data = media_data
         self.media_costs = media_costs
+        self.media_costs_by_row = media_costs_by_row
         self.media_priors = media_priors
         self.media_names = media_names
         self.extra_features_data = extra_features_data
@@ -186,6 +190,13 @@ class InputData:
                         dstr = self.date_strs[idx]
                         media_data_file.write(f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
 
+            for media_idx, media_name in enumerate(self.media_names):
+                media_fname = f"input_data_{suffix}_{media_name.lower().replace(' ', '_')}_costs.txt"
+                with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
+                    for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
+                        dstr = self.date_strs[idx]
+                        media_costs_file.write(f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
+
             for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
                 extra_features_fname = f"input_data_{suffix}_{extra_features_name.lower().replace(' ', '_')}.txt"
                 with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
@@ -215,6 +226,7 @@ class InputData:
             time_granularity=self.time_granularity,
             media_data=self.media_data.copy(),
             media_costs=self.media_costs.copy(),
+            media_costs_by_row=self.media_costs_by_row.copy(),
             media_priors=self.media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
@@ -251,6 +263,10 @@ class InputData:
         media_df_daily = pd.DataFrame(data=media_data_dict)
         media_df_weekly = media_df_daily.groupby(by=InputData._group_by_week).sum()
 
+        media_costs_data_dict = {name: self.media_costs_by_row[:, idx] for idx, name in enumerate(self.media_names)}
+        media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
+        media_costs_df_weekly = media_costs_df_daily.groupby(by=InputData._group_by_week).sum()
+
         extra_features_data_dict = {name: self.extra_features_data[:, idx] for idx, name in
                                     enumerate(self.extra_features_names)}
         extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
@@ -263,6 +279,7 @@ class InputData:
         if needs_cut_last:
             date_strs_weekly = date_strs_weekly[:-1]
             media_df_weekly = media_df_weekly[:-1]
+            media_costs_df_weekly = media_costs_df_weekly[:-1]
             extra_features_df_weekly = extra_features_df_weekly[:-1]
             target_df_weekly = target_df_weekly[:-1]
 
@@ -277,6 +294,7 @@ class InputData:
             time_granularity=constants.GRANULARITY_WEEKLY,
             media_data=media_df_weekly.to_numpy(),
             media_costs=self.media_costs.copy(),
+            media_costs_by_row=media_costs_df_weekly.to_numpy(),
             media_priors=self.media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,

@@ -37,7 +37,12 @@ def plot_all_metrics(input_data, output_dir, suffix):
     time_axis = np.arange(input_data.media_data.shape[0])
 
     # add 1 for the target metric
-    num_metrics = input_data.media_data.shape[1] + input_data.extra_features_data.shape[1] + 1
+    num_metrics = (
+            input_data.media_data.shape[1] +
+            input_data.media_costs_by_row.shape[1] +
+            input_data.extra_features_data.shape[1] +
+            1
+    )
     fig, axs = plt.subplots(num_metrics, 1, sharex="all", figsize=(8, 4 * num_metrics))
 
     charts = []
@@ -45,6 +50,10 @@ def plot_all_metrics(input_data, output_dir, suffix):
     for media_idx in range(input_data.media_data.shape[1]):
         values = input_data.media_data[:, media_idx]
         chart_name = f"{input_data.media_names[media_idx]} (volume)"
+        charts.append((chart_name, values))
+
+        values = input_data.media_costs_by_row[:, media_idx]
+        chart_name = f"{input_data.media_names[media_idx]} (cost)"
         charts.append((chart_name, values))
 
     for extra_features_idx in range(input_data.extra_features_data.shape[1]):

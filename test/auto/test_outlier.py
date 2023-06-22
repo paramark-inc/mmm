@@ -18,6 +18,7 @@ class OutlierTestCase(unittest.TestCase):
                 dtype=np.float64
             ),
             media_costs=np.array([100.0, 200.0, 300.0], dtype=np.float64),
+            media_costs_by_row=np.ndarray(shape=(0, 3)),
             media_priors=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_names=["Google", "Facebook", "Events"],
             extra_features_data=np.array(
@@ -61,6 +62,7 @@ class OutlierTestCase(unittest.TestCase):
                 dtype=np.float64
             ),
             media_costs=np.array([100.0, 200.0, 300.0], dtype=np.float64),
+            media_costs_by_row=np.ndarray(shape=(0, 3)),
             media_priors=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_names=["Google", "Facebook", "Events"],
             extra_features_data=np.array(

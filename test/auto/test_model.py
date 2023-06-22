@@ -19,7 +19,10 @@ class ModelTestCase(unittest.TestCase):
 
         # n observations * 2 channels
         media_data = np.arange(observations * 2).astype(np.float64).reshape((observations, 2))
-        media_costs = np.arange(1, 3).astype(np.float64) * 1000.
+        media_costs_by_row = media_data.copy()
+        media_costs_by_row[:, 0] *= 100.
+        media_costs_by_row[:, 1] *= 200.
+        media_costs = media_costs_by_row.sum(axis=0)
 
         # n observations * 3 features
         extra_features_data = (np.arange(observations * 3).astype(np.float64) * 2.).reshape((observations, 3))
@@ -31,6 +34,7 @@ class ModelTestCase(unittest.TestCase):
             time_granularity=constants.GRANULARITY_DAILY,
             media_data=media_data,
             media_costs=media_costs,
+            media_costs_by_row=media_costs_by_row,
             media_priors=media_costs,
             media_names=["Channel1", "Channel2"],
             extra_features_data=extra_features_data,
@@ -139,7 +143,12 @@ class ModelTestCase(unittest.TestCase):
         self.assertEqual(14, input_data_weekly.date_strs.shape[0])
         self.assertEqual(constants.GRANULARITY_WEEKLY, input_data_weekly.time_granularity)
         self.assertEqual(14, input_data_weekly.media_data.shape[0])
+        self.assertEqual(14, input_data_weekly.media_costs_by_row.shape[0])
         assert_array_almost_equal(input_data.media_data[0:98, :].sum(axis=0), input_data_weekly.media_data.sum(axis=0))
+        assert_array_almost_equal(
+            input_data.media_costs_by_row[0:98, :].sum(axis=0),
+            input_data_weekly.media_costs_by_row.sum(axis=0)
+        )
         assert_array_equal(input_data.media_costs, input_data_weekly.media_costs)
         assert_array_equal(input_data.media_names, input_data_weekly.media_names)
         self.assertEqual(14, input_data_weekly.extra_features_data.shape[0])
@@ -157,7 +166,12 @@ class ModelTestCase(unittest.TestCase):
         self.assertEqual(14, input_data_weekly.date_strs.shape[0])
         self.assertEqual(constants.GRANULARITY_WEEKLY, input_data_weekly.time_granularity)
         self.assertEqual(14, input_data_weekly.media_data.shape[0])
+        self.assertEqual(14, input_data_weekly.media_costs_by_row.shape[0])
         assert_array_almost_equal(input_data.media_data.sum(axis=0), input_data_weekly.media_data.sum(axis=0))
+        assert_array_almost_equal(
+            input_data.media_costs_by_row.sum(axis=0),
+            input_data_weekly.media_costs_by_row.sum(axis=0)
+        )
         assert_array_equal(input_data.media_costs, input_data_weekly.media_costs)
         assert_array_equal(input_data.media_names, input_data_weekly.media_names)
         self.assertEqual(14, input_data_weekly.extra_features_data.shape[0])
