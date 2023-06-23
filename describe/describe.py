@@ -37,7 +37,7 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
     :param roi_hat: see LightweightMMM.get_posterior_metrics
     :param results_dir: results directory
     """
-    output_fname = os.path.join(results_dir, "media_effect_and_roi_results.txt")
+    output_fname = os.path.join(results_dir, "media_contribution_and_roi_by_channel.txt")
     with open(output_fname, 'w') as f:
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
