@@ -41,17 +41,17 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
     with open(output_fname, 'w') as f:
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
-            f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.3f}\n")
-            f.write(f"median={np.median(media_effect_hat[:, media_idx]):,.3f}\n")
+            f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.6f}\n")
+            f.write(f"median={np.median(media_effect_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
-            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.3f}, {quantiles[1]:,.3f}]\n\n")
+            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} ROI:\n")
-            f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.3f}\n")
-            f.write(f"median={np.median(roi_hat[:, media_idx]):,.3f}\n")
+            f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.6f}\n")
+            f.write(f"median={np.median(roi_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
-            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.3f}, {quantiles[1]:,.3f}]\n\n")
+            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
 
 def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
