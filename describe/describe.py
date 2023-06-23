@@ -64,17 +64,17 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     :param results_dir: directory to write plot files to
     :return:
     """
-    output_fname = os.path.join(results_dir, "model_summary.txt")
+    output_fname = os.path.join(results_dir, "model_coefficients.txt")
     with open(output_fname, 'w') as f:
         with redirect_stdout(f):
             mmm.print_summary()
 
     fig = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
-    output_fname = os.path.join(results_dir, "model_fit.png")
+    output_fname = os.path.join(results_dir, "model_fit_in_sample.png")
     fig.savefig(output_fname)
 
     fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
-    output_fname = os.path.join(results_dir, "media_posteriors.png")
+    output_fname = os.path.join(results_dir, "model_media_posteriors.png")
     fig.savefig(output_fname)
 
     media_cost_per_unscaled_unit = input_data.media_costs / np.sum(input_data.media_data, axis=0)
@@ -88,7 +88,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     fig.savefig(output_fname)
 
     fig = plot_prior_and_posterior(media_mix_model=mmm)
-    output_fname = os.path.join(results_dir, "all_priors_and_posteriors.png")
+    output_fname = os.path.join(results_dir, "model_priors_and_posteriors.png")
     fig.savefig(output_fname)
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
@@ -149,5 +149,5 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
     fig = plot_out_of_sample_model_fit(
         out_of_sample_predictions=prediction, out_of_sample_target=target_test_unscaled
     )
-    output_fname = os.path.join(results_dir, "out_of_sample_model_fit.png")
+    output_fname = os.path.join(results_dir, "model_fit_out_of_sample.png")
     fig.savefig(output_fname)

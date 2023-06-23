@@ -70,5 +70,5 @@ def plot_all_metrics(input_data, output_dir, suffix):
     # tight_layout will space the charts out evenly, vertically
     fig.tight_layout()
 
-    output_fname = os.path.join(output_dir, f"all_metrics_{suffix}.png")
+    output_fname = os.path.join(output_dir, f"metrics_{suffix}.png")
     plt.savefig(output_fname)

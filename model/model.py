@@ -162,7 +162,7 @@ class InputData:
         :return:
         """
 
-        with open(os.path.join(output_dir, f"input_data_{suffix}_summary.txt"), "w") as summary_file:
+        with open(os.path.join(output_dir, f"data_{suffix}_summary.txt"), "w") as summary_file:
             summary_file.write(f"time_granularity={self.time_granularity}\n")
             summary_file.write(f"\nmedia_names:\n")
             for idx, media_name in enumerate(self.media_names):
@@ -179,26 +179,26 @@ class InputData:
             summary_file.write(f"\ntarget_name={self.target_name}\n")
 
         if verbose:
-            with open(os.path.join(output_dir, f"input_data_{suffix}_dates.txt"), "w") as dates_file:
+            with open(os.path.join(output_dir, f"data_{suffix}_dates.txt"), "w") as dates_file:
                 for idx, dstr in enumerate(self.date_strs):
                     dates_file.write(f"date_strs[{idx:>3}]={dstr:>10}\n")
 
             for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"input_data_{suffix}_{media_name.lower().replace(' ', '_')}.txt"
+                media_fname = f"data_{suffix}_{media_name.lower().replace(' ', '_')}.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
                     for idx, val in enumerate(self.media_data[:, media_idx]):
                         dstr = self.date_strs[idx]
                         media_data_file.write(f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
 
             for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"input_data_{suffix}_{media_name.lower().replace(' ', '_')}_costs.txt"
+                media_fname = f"data_{suffix}_{media_name.lower().replace(' ', '_')}_costs.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
                     for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
                         dstr = self.date_strs[idx]
                         media_costs_file.write(f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
 
             for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                extra_features_fname = f"input_data_{suffix}_{extra_features_name.lower().replace(' ', '_')}.txt"
+                extra_features_fname = f"data_{suffix}_{extra_features_name.lower().replace(' ', '_')}.txt"
                 with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
                     for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
                         dstr = self.date_strs[idx]
@@ -206,7 +206,7 @@ class InputData:
                             f"extra_features_data[{extra_features_idx:>3}][{idx}]({dstr:>10})={val:,.2f}\n"
                         )
 
-            with open(os.path.join(output_dir, f"input_data_{suffix}_target.txt"), "w") as target_file:
+            with open(os.path.join(output_dir, f"data_{suffix}_target.txt"), "w") as target_file:
                 for idx, val in enumerate(self.target_data):
                     dstr = self.date_strs[idx]
                     target_file.write(f"target_data[{idx:>3}]({dstr:>10})={val:,.2f}\n")
