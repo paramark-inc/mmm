@@ -28,6 +28,23 @@ def describe_input_data(input_data, results_dir, suffix):
     print_outliers(input_data=input_data, output_dir=results_dir, suffix=suffix)
 
 
+def describe_config(output_dir, config, git_sha):
+    """
+    write text files with model configuration so we can reproduce this run in future
+    :param output_dir: directory to write plot files to
+    :param config: raw contents (bytes) of the config file used for this run
+    :param git_sha: current commit hash of the repo used to generate these results
+    :return:
+    """
+    output_fname = os.path.join(output_dir, "git_sha.txt")
+    with open(output_fname, 'w') as f:
+        f.write(git_sha)
+
+    output_fname = os.path.join(output_dir, "config.yaml")
+    with open(output_fname, 'w') as f:
+        f.write(config)
+
+
 def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
     """
     write posterior metrics to a file
