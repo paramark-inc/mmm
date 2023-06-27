@@ -317,13 +317,13 @@ class InputData:
         You'll need to exp() them manually.
         :return: new InputData instance
         """
-        assert not self.target_is_log_scale
-
         return InputData(
             date_strs=self.date_strs.copy(),
             time_granularity=self.time_granularity,
             media_data=self.media_data.copy(),
             media_costs=self.media_costs.copy(),
+            media_costs_by_row=self.media_costs_by_row.copy(),
+            media_priors=self.media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=self.extra_features_data.copy(),
             extra_features_names=self.extra_features_names.copy(),
