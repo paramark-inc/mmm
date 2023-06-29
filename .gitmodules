@@ -1,4 +1,4 @@
 [submodule "impl/lightweight_mmm"]
 	path = impl/lightweight_mmm
 	url = https://github.com/fastrak-inc/lightweight_mmm
-	branch = log-scale-target
+	branch = main
