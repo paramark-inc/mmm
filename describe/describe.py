@@ -118,13 +118,15 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
     coef_extra_features = jnp.mean(mmm.trace["coef_extra_features"], axis=0)
     gamma_seasonality = jnp.mean(mmm.trace["gamma_seasonality"], axis=0)
 
-    columns = ["intercept", "trend", "seasonality", "extra features"]
+    columns = ["intercept", "trend", "seasonality"]
 
     if input_data.time_granularity == constants.GRANULARITY_DAILY:
         weekday = jnp.mean(mmm.trace["weekday"], axis=0)
         columns.append("weekday")
     else:
         weekday = None
+
+    columns += data_to_fit.extra_features_names
 
     frequency = 365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52
 
@@ -138,12 +140,14 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
     data = np.zeros(shape=(num_observations, len(columns)))
 
     if data_to_fit.extra_features_train_scaled.shape[1]:
-        extra_features_einsum = "tf, f -> t"  # t = time, f = feature
-        data[:, columns.index("extra features")] = jnp.einsum(
+        extra_features_einsum = "tf, f -> tf"  # t = time, f = feature
+        extra_features_mult = jnp.einsum(
             extra_features_einsum,
             data_to_fit.extra_features_train_scaled,
             coef_extra_features
         )
+    else:
+        extra_features_mult = None
 
     for i in range(num_observations):
         data[i, columns.index("intercept")] = intercept
@@ -151,31 +155,25 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
         data[i, columns.index("seasonality")] = seasonality_by_obs[i]
         if weekday is not None:
             data[i, columns.index("weekday")] = weekday[i % 7]
+        for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
+            data[i, columns.index(data_to_fit.extra_features_names[j])] = extra_features_mult[i, j]
 
     data = data_to_fit.target_scaler.inverse_transform(data)
 
     baseline_breakdown_df = pd.DataFrame(data=data, columns=columns)
-    baseline_breakdown_df["sum"] = baseline_breakdown_df.sum(axis=1)
+    baseline_breakdown_df["baseline"] = baseline_breakdown_df.sum(axis=1)
 
     with open(os.path.join(results_dir, "baseline_breakdown.txt"), "w") as f:
-        f.write("Sums over entire time period:\n\n")
-        f.write(f"intercept={baseline_breakdown_df['intercept'].sum():,.4f}\n")
-        f.write(f"trend={baseline_breakdown_df['trend'].sum():,.4f}\n")
-        f.write(f"seasonality={baseline_breakdown_df['seasonality'].sum():,.4f}\n")
-        f.write(f"extra features={baseline_breakdown_df['extra features'].sum():,.4f}\n")
-        if weekday is not None:
-            f.write(f"weekday={baseline_breakdown_df['weekday'].sum():,.4f}\n")
-        f.write(f"baseline={baseline_breakdown_df['sum'].sum():,.4f}\n")
-
-        f.write("\n")
         f.write("Mean value by component:\n\n")
         f.write(f"intercept={baseline_breakdown_df['intercept'].mean():,.4f}\n")
         f.write(f"trend={baseline_breakdown_df['trend'].mean():,.4f}\n")
         f.write(f"seasonality={baseline_breakdown_df['seasonality'].mean():,.4f}\n")
-        f.write(f"extra features={baseline_breakdown_df['extra features'].mean():,.4f}\n")
+        for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
+            extra_feature_name = data_to_fit.extra_features_names[j]
+            f.write(f"{extra_feature_name}={baseline_breakdown_df[extra_feature_name].mean():,.4f}\n")
         if weekday is not None:
             f.write(f"weekday={baseline_breakdown_df['weekday'].mean():,.4f}\n")
-        f.write(f"baseline={baseline_breakdown_df['sum'].mean():,.4f}\n")
+        f.write(f"baseline={baseline_breakdown_df['baseline'].mean():,.4f}\n")
 
         f.write("\n")
         f.write("Row by Row breakdown:\n\n")
