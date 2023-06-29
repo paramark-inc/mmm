@@ -1,5 +1,7 @@
 from contextlib import redirect_stdout
 import numpy as np
+import jax.numpy as jnp
+import pandas as pd
 import os
 
 from ..impl.lightweight_mmm.lightweight_mmm.plot import (
@@ -12,6 +14,9 @@ from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_response_curves
 )
 
+from ..impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
+
+from ..constants import constants
 from ..outlier.outlier import print_outliers
 from ..plot.plot import plot_all_metrics
 
@@ -30,7 +35,7 @@ def describe_input_data(input_data, results_dir, suffix):
 
 def describe_config(output_dir, config, git_sha):
     """
-    write text files with model configuration so we can reproduce this run in future
+    write text files with model configuration, so we can reproduce this run in future
     :param output_dir: directory to write plot files to
     :param config: raw contents (bytes) of the config file used for this run
     :param git_sha: current commit hash of the repo used to generate these results
@@ -71,13 +76,122 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
 
-def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
+def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_seasonality, results_dir):
+    """
+    Break down the baseline into its component pieces and write the results to a text file.
+
+    :param media_mix_model: LightweightMMM instance
+    :param input_data: InputData instance
+    :param data_to_fit: DataToFit instance
+    :param degrees_seasonality: Degrees of seasonality used to fit the model
+    :param results_dir: results directory to write to
+    :return: None
+    """
+
+    # media_einsum = "tc, c -> t"  # t = time, c = channel
+    # extra_features_einsum = "tf, f -> t"  # t = time, f = feature
+    # target = intercept +
+    #          coef_trend * trend ** expo_trend +
+    #          seasonality +
+    #          jnp.einsum(media_einsum, media_transformed, coef_media) +
+    #          jnp.einsum(extra_features_einsum,
+    #                     extra_features,
+    #                     coef_extra_features)
+    # with an extra term for weekday cases:
+    #          weekday[jnp.arange(data_size) % 7]
+
+    # Array shapes:
+    #   intercept = (samples, 1)
+    #   coef_trend = (samples, 1)
+    #   expo_trend = (samples,)
+    #   media_transformed = (samples, observations, channels)
+    #   coef_media = (samples, channels)
+    #   coef_extra_features = (samples, features)
+    #   coef_weekday = (samples, 7)
+    #
+
+    mmm = media_mix_model
+    num_observations = data_to_fit.media_data_train_scaled.shape[0]
+    intercept = jnp.mean(jnp.squeeze(mmm.trace["intercept"]))
+    coef_trend = jnp.mean(jnp.squeeze(mmm.trace["coef_trend"]))
+    expo_trend = jnp.mean(mmm.trace["expo_trend"])
+    coef_extra_features = jnp.mean(mmm.trace["coef_extra_features"], axis=0)
+    gamma_seasonality = jnp.mean(mmm.trace["gamma_seasonality"], axis=0)
+
+    columns = ["intercept", "trend", "seasonality", "extra features"]
+
+    if input_data.time_granularity == constants.GRANULARITY_DAILY:
+        weekday = jnp.mean(mmm.trace["weekday"], axis=0)
+        columns.append("weekday")
+    else:
+        weekday = None
+
+    frequency = 365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52
+
+    seasonality_by_obs = calculate_seasonality(
+        number_periods=num_observations,
+        degrees=degrees_seasonality,
+        frequency=frequency,
+        gamma_seasonality=gamma_seasonality
+    )
+
+    data = np.zeros(shape=(num_observations, len(columns)))
+
+    if data_to_fit.extra_features_train_scaled.shape[1]:
+        extra_features_einsum = "tf, f -> t"  # t = time, f = feature
+        data[:, columns.index("extra features")] = jnp.einsum(
+            extra_features_einsum,
+            data_to_fit.extra_features_train_scaled,
+            coef_extra_features
+        )
+
+    for i in range(num_observations):
+        data[i, columns.index("intercept")] = intercept
+        data[i, columns.index("trend")] = coef_trend * i ** expo_trend
+        data[i, columns.index("seasonality")] = seasonality_by_obs[i]
+        if weekday is not None:
+            data[i, columns.index("weekday")] = weekday[i % 7]
+
+    data = data_to_fit.target_scaler.inverse_transform(data)
+
+    baseline_breakdown_df = pd.DataFrame(data=data, columns=columns)
+    baseline_breakdown_df["sum"] = baseline_breakdown_df.sum(axis=1)
+
+    with open(os.path.join(results_dir, "baseline_breakdown.txt"), "w") as f:
+        f.write("Sums over entire time period:\n\n")
+        f.write(f"intercept={baseline_breakdown_df['intercept'].sum():,.4f}\n")
+        f.write(f"trend={baseline_breakdown_df['trend'].sum():,.4f}\n")
+        f.write(f"seasonality={baseline_breakdown_df['seasonality'].sum():,.4f}\n")
+        f.write(f"extra features={baseline_breakdown_df['extra features'].sum():,.4f}\n")
+        if weekday is not None:
+            f.write(f"weekday={baseline_breakdown_df['weekday'].sum():,.4f}\n")
+        f.write(f"baseline={baseline_breakdown_df['sum'].sum():,.4f}\n")
+
+        f.write("\n")
+        f.write("Mean value by component:\n\n")
+        f.write(f"intercept={baseline_breakdown_df['intercept'].mean():,.4f}\n")
+        f.write(f"trend={baseline_breakdown_df['trend'].mean():,.4f}\n")
+        f.write(f"seasonality={baseline_breakdown_df['seasonality'].mean():,.4f}\n")
+        f.write(f"extra features={baseline_breakdown_df['extra features'].mean():,.4f}\n")
+        if weekday is not None:
+            f.write(f"weekday={baseline_breakdown_df['weekday'].mean():,.4f}\n")
+        f.write(f"baseline={baseline_breakdown_df['sum'].mean():,.4f}\n")
+
+        f.write("\n")
+        f.write("Row by Row breakdown:\n\n")
+        f.write(baseline_breakdown_df.to_string(float_format=lambda x: f"{x:,.4f}"))
+
+    return baseline_breakdown_df
+
+
+def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, results_dir):
     """
     Plot and print diagnostic analyses of the MMM training data.
 
     :param mmm: LightweightMMM instance
     :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
+    :param degrees_seasonality: degrees of seasonality used for fitting
     :param results_dir: directory to write plot files to
     :return:
     """
@@ -134,6 +248,14 @@ def describe_mmm_training(mmm, input_data, data_to_fit, results_dir):
     )
     output_fname = os.path.join(results_dir, "roi_by_channel.png")
     fig.savefig(output_fname)
+
+    _dump_baseline_breakdown(
+        media_mix_model=mmm,
+        input_data=input_data,
+        data_to_fit=data_to_fit,
+        degrees_seasonality=degrees_seasonality,
+        results_dir=results_dir
+    )
 
     fig = plot_media_baseline_contribution_area_plot(
         media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=data_to_fit.media_names
