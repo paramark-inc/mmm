@@ -42,6 +42,7 @@ def test_print_outliers(output_dir):
         extra_features_data=np.ndarray(shape=(0, 0)),
         extra_features_names=np.array([]),
         target_data=target_values,
+        target_is_log_scale=False,
         target_name="Sales"
     )
     input_data.dump(output_dir=output_dir, suffix="brief", verbose=True)

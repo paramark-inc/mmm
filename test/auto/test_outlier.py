@@ -27,6 +27,7 @@ class OutlierTestCase(unittest.TestCase):
             ),
             extra_features_names=["Macro1", "Macro2"],
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
+            target_is_log_scale=False,
             target_name="Sales"
         )
 
@@ -71,6 +72,7 @@ class OutlierTestCase(unittest.TestCase):
             ),
             extra_features_names=["Macro1", "Macro2"],
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
+            target_is_log_scale=False,
             target_name="Sales"
         )
 
