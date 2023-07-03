@@ -157,6 +157,15 @@ class InputData:
         self.target_name = target_name
         self.target_is_log_scale = target_is_log_scale
 
+    @staticmethod
+    def _sanitize_name(media_name):
+        """
+        Sanitize a channel or extra feature name for the purpose of creating filenames.
+        :param media_name: channel name
+        :return: sanititized name
+        """
+        return media_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
+
     def dump(self, output_dir, suffix, verbose=False):
         """
         Debugging routine
@@ -189,21 +198,21 @@ class InputData:
                     dates_file.write(f"date_strs[{idx:>3}]={dstr:>10}\n")
 
             for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"data_{suffix}_{media_name.lower().replace(' ', '_')}.txt"
+                media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
                     for idx, val in enumerate(self.media_data[:, media_idx]):
                         dstr = self.date_strs[idx]
                         media_data_file.write(f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
 
             for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"data_{suffix}_{media_name.lower().replace(' ', '_')}_costs.txt"
+                media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}_costs.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
                     for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
                         dstr = self.date_strs[idx]
                         media_costs_file.write(f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
 
             for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                extra_features_fname = f"data_{suffix}_{extra_features_name.lower().replace(' ', '_')}.txt"
+                extra_features_fname = f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
                 with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
                     for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
                         dstr = self.date_strs[idx]
@@ -330,6 +339,77 @@ class InputData:
             target_data=np.log(self.target_data),
             target_is_log_scale=True,
             target_name=self.target_name + " (log-transformed)"
+        )
+
+    def clone_and_split_media_data(self, channel_idx, split_obs_idx, media_before_name, media_after_name):
+        """
+        clone this input_data and split the given media column around a split point.  "Split" means to create
+        a new media column, place the data starting at 'media_idx' in the new column, and fill empty values with
+        zeroes.
+
+        :param channel_idx: media channel to split into two
+        :param split_obs_idx: observation index to begin the new "after" channel at
+        :param media_before_name: name of the "before" channel created by this function
+        :param media_after_name: name of the "after" channel created by this function
+        :return:
+        """
+        media_names = (
+                self.media_names[0:channel_idx] +
+                [media_before_name, media_after_name] +
+                self.media_names[channel_idx + 1:]
+        )
+
+        media_data_before_column = self.media_data[:, channel_idx].copy()
+        media_data_before_column[split_obs_idx:] = 0.0
+        media_data_after_column = self.media_data[:, channel_idx].copy()
+        media_data_after_column[:split_obs_idx] = 0.0
+
+        media_data = np.zeros(shape=(self.media_data.shape[0], self.media_data.shape[1] + 1))
+        media_data[:, :channel_idx] = self.media_data[:, :channel_idx]
+        media_data[:, channel_idx] = media_data_before_column
+        media_data[:, channel_idx + 1] = media_data_after_column
+        media_data[:, channel_idx + 2:] = self.media_data[:, channel_idx + 1:]
+
+        media_costs_by_row_before_column = self.media_costs_by_row[:, channel_idx].copy()
+        media_costs_by_row_before_column[split_obs_idx:] = 0.0
+        media_costs_by_row_after_column = self.media_costs_by_row[:, channel_idx].copy()
+        media_costs_by_row_after_column[:split_obs_idx] = 0.0
+
+        media_costs_by_row = np.zeros(shape=(self.media_costs_by_row.shape[0], self.media_costs_by_row.shape[1] + 1))
+        media_costs_by_row[:, :channel_idx] = self.media_costs_by_row[:, :channel_idx]
+        media_costs_by_row[:, channel_idx] = media_costs_by_row_before_column
+        media_costs_by_row[:, channel_idx + 1] = media_costs_by_row_after_column
+        media_costs_by_row[:, channel_idx + 2:] = self.media_costs_by_row[:, channel_idx + 1:]
+
+        media_costs = np.zeros(shape=(self.media_costs.shape[0] + 1,))
+        media_costs[:channel_idx] = self.media_costs[:channel_idx]
+        media_costs[channel_idx] = media_costs_by_row_before_column.sum()
+        media_costs[channel_idx + 1] = media_costs_by_row_after_column.sum()
+        media_costs[channel_idx + 2:] = self.media_costs[channel_idx + 1:]
+
+        media_priors = np.zeros(shape=(self.media_priors.shape[0] + 1,))
+        media_priors[:channel_idx] = self.media_priors[:channel_idx]
+        # artificially scale media_priors down by the percentage of observations that are included in the split
+        # column.  This is technically incorrect, but since priors do not directly impact the results, presumably
+        # good enough.
+        split_point_pct = split_obs_idx / self.media_data.shape[0]
+        media_priors[channel_idx] = self.media_priors[channel_idx] * split_point_pct
+        media_priors[channel_idx + 1] = self.media_priors[channel_idx] * (1 - split_point_pct)
+        media_priors[channel_idx + 2:] = self.media_priors[channel_idx + 1:]
+
+        return InputData(
+            date_strs=self.date_strs.copy(),
+            time_granularity=self.time_granularity,
+            media_data=media_data,
+            media_costs=media_costs,
+            media_costs_by_row=media_costs_by_row,
+            media_priors=media_priors,
+            media_names=media_names,
+            extra_features_data=self.extra_features_data.copy(),
+            extra_features_names=self.extra_features_names.copy(),
+            target_data=self.target_data.copy(),
+            target_is_log_scale=self.target_is_log_scale,
+            target_name=self.target_name,
         )
 
 

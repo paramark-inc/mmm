@@ -195,6 +195,53 @@ class ModelTestCase(unittest.TestCase):
         )
         assert_array_almost_equal(new_feature_data, new_input_data.extra_features_data[:, 3:5])
 
+    def test_clone_and_split_media_data(self):
+        input_data = ModelTestCase._generate_test_input_data(observations=100)
+
+        input_data_split_channel_0 = input_data.clone_and_split_media_data(
+            channel_idx=0,
+            split_obs_idx=10,
+            media_before_name="Channel1 (before)",
+            media_after_name="Channel1 (after)",
+        )
+
+        self.assertEqual(input_data.media_data.shape[0], input_data_split_channel_0.media_data.shape[0])
+        self.assertEqual(3, input_data_split_channel_0.media_data.shape[1])
+        self.assertAlmostEqual(0.0, input_data_split_channel_0.media_data[10:, 0].sum())
+        self.assertAlmostEqual(
+            input_data.media_data[:10, 0].sum(),
+            input_data_split_channel_0.media_data[:10, 0].sum()
+        )
+        self.assertAlmostEqual(0.0, input_data_split_channel_0.media_data[:10, 1].sum())
+        self.assertAlmostEqual(
+            input_data.media_data[10:, 0].sum(),
+            input_data_split_channel_0.media_data[10:, 1].sum()
+        )
+        self.assertAlmostEqual(
+            input_data.media_data[:, 1].sum(),
+            input_data_split_channel_0.media_data[:, 2].sum()
+        )
+
+        input_data_split_channel_1 = input_data.clone_and_split_media_data(
+            channel_idx=1,
+            split_obs_idx=input_data.media_data.shape[0] - 1,
+            media_before_name="Channel2 (before)",
+            media_after_name="Channel2 (after)",
+        )
+
+        self.assertEqual(input_data.media_data.shape[0], input_data_split_channel_1.media_data.shape[0])
+        self.assertEqual(3, input_data_split_channel_1.media_data.shape[1])
+        self.assertAlmostEqual(0.0, input_data_split_channel_1.media_data[-1, 1])
+        self.assertAlmostEqual(
+            input_data.media_data[:-1, 1].sum(),
+            input_data_split_channel_1.media_data[:, 1].sum()
+        )
+        self.assertAlmostEqual(0.0, input_data_split_channel_1.media_data[:-1, 2].sum())
+        self.assertAlmostEqual(
+            input_data.media_data[:, 0].sum(),
+            input_data_split_channel_1.media_data[:, 0].sum()
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
