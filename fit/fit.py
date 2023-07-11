@@ -1,8 +1,8 @@
 from ..impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
-from ..impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from ..constants import constants
 
+import numpyro
 import os
 import yaml
 
@@ -53,7 +53,7 @@ def fit_lightweight_mmm(
         "degrees_seasonality": degrees_seasonality,
         "number_warmup": number_warmup,
         "number_samples": number_warmup,
-        "media_prior": data_to_fit.media_priors_scaled.tolist(),
+        "media_prior": data_to_fit.media_priors_scaled.tolist(), # TODO hourann validate that tolist() doesn't break the arg
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
@@ -69,7 +69,7 @@ def fit_lightweight_mmm(
 
     # manually generate a seed in the same way as lightweight mmm's
     # fit(), and store it for future reproducibility
-    fit_params["seed"] = get_time_seed()
+    fit_params["seed"] = lightweight_mmm.utils.get_time_seed()
 
     with open(os.path.join(results_dir, "fit_params.yaml"), "w") as output_file:
         yaml.dump(fit_params, output_file, default_flow_style=False)
@@ -82,5 +82,29 @@ def fit_lightweight_mmm(
             extra_features=extra_features,
             target=data_to_fit.target_train_scaled,
             **fit_params)
+
+    # from lightweight_mmm/lightweight_mmm.py
+    _NAMES_TO_MODEL_TRANSFORMS = {
+      "hill_adstock": lightweight_mmm.models.transform_hill_adstock,
+      "adstock": lightweight_mmm.models.transform_adstock,
+      "carryover": lightweight_mmm.models.transform_carryover
+    }
+
+    numpyro.render_model(
+        mmm._model_function,
+        model_args=(
+            data_to_fit.media_data_train_scaled, # media_data: jnp.ndarray
+            data_to_fit.target_train_scaled, # target_data
+            data_to_fit.media_priors_scaled, # media_prior
+            fit_params["degrees_seasonality"], # degrees_seasonality
+            fit_params["seasonality_frequency"], # frequency
+            _NAMES_TO_MODEL_TRANSFORMS[model_name], # transform_function: TransformFunction,
+            {}, # custom_priors: MutableMapping[str, Prior]
+            # transform_kwargs: Optional[MutableMapping[str, Any]] = None,
+            # weekday_seasonality: bool = False,
+            # extra_features: Optional[jnp.array] = None
+        ),
+        filename=os.path.join(results_dir, "hourann.png"),
+    )
 
     return mmm
