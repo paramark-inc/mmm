@@ -115,7 +115,10 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
     intercept = jnp.mean(jnp.squeeze(mmm.trace["intercept"]))
     coef_trend = jnp.mean(jnp.squeeze(mmm.trace["coef_trend"]))
     expo_trend = jnp.mean(mmm.trace["expo_trend"])
-    coef_extra_features = jnp.mean(mmm.trace["coef_extra_features"], axis=0)
+    if data_to_fit.extra_features_train_scaled.shape[1]:
+        coef_extra_features = jnp.mean(mmm.trace["coef_extra_features"], axis=0)
+    else:
+        coef_extra_features = None
     gamma_seasonality = jnp.mean(mmm.trace["gamma_seasonality"], axis=0)
 
     columns = ["intercept", "trend", "seasonality"]
