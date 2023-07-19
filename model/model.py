@@ -445,6 +445,9 @@ class DataToFit:
         # split_point = math.ceil(data_size * 0.5)
         media_data_train = input_data.media_data[:split_point, :]
         media_data_test = input_data.media_data[split_point:, :]
+        media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :]
+        media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :]
+
         target_train = input_data.target_data[:split_point]
         target_test = input_data.target_data[split_point:]
         extra_features_train = input_data.extra_features_data[:split_point, :]
@@ -468,6 +471,8 @@ class DataToFit:
 
         media_priors_scaled = media_cost_scaler.fit_transform(input_data.media_priors)
         media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
+        media_costs_by_row_train_scaled = media_cost_scaler.transform(media_costs_by_row_train)
+        media_costs_by_row_test_scaled = media_cost_scaler.transform(media_costs_by_row_test)
 
         return DataToFit(
             date_strs=input_data.date_strs,
@@ -477,6 +482,8 @@ class DataToFit:
             media_scaler=media_scaler,
             media_costs_scaled=media_costs_scaled,
             media_priors_scaled=media_priors_scaled,
+            media_costs_by_row_train_scaled=media_costs_by_row_train_scaled,
+            media_costs_by_row_test_scaled=media_costs_by_row_test_scaled,
             media_costs_scaler=media_cost_scaler,
             media_names=input_data.media_names,
             extra_features_train_scaled=extra_features_train_scaled,
@@ -499,6 +506,8 @@ class DataToFit:
             media_scaler,
             media_costs_scaled,
             media_priors_scaled,
+            media_costs_by_row_train_scaled,
+            media_costs_by_row_test_scaled,
             media_costs_scaler,
             media_names,
             extra_features_train_scaled,
@@ -518,6 +527,8 @@ class DataToFit:
         self.media_scaler = media_scaler
         self.media_costs_scaled = media_costs_scaled
         self.media_priors_scaled = media_priors_scaled
+        self.media_costs_by_row_train_scaled = media_costs_by_row_train_scaled
+        self.media_costs_by_row_test_scaled = media_costs_by_row_test_scaled
         self.media_costs_scaler = media_costs_scaler
         self.media_names = media_names
         self.extra_features_train_scaled = extra_features_train_scaled
@@ -540,10 +551,23 @@ class DataToFit:
 
         media_data_scaled = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
         media_data_unscaled = self.media_scaler.inverse_transform(media_data_scaled)
-        for media_idx in range(media_data_scaled.shape[1]):
+        n_media_channels = media_data_scaled.shape[1]
+        for media_idx in range(n_media_channels):
             col_name = f"{self.media_names[media_idx]} volume"
             media_data_touse = media_data_unscaled if unscaled else media_data_scaled
             observation_data_by_column_name[col_name] = media_data_touse[:, media_idx]
+
+        media_costs_by_row_scaled = np.vstack(
+            (
+                self.media_costs_by_row_train_scaled,
+                self.media_costs_by_row_test_scaled
+            )
+        )
+        media_costs_by_row_unscaled = self.media_costs_scaler.inverse_transform(media_costs_by_row_scaled)
+        for media_idx in range(n_media_channels):
+            col_name = f"{self.media_names[media_idx]} cost"
+            media_costs_by_row_touse = media_costs_by_row_unscaled if unscaled else media_costs_by_row_scaled
+            observation_data_by_column_name[col_name] = media_costs_by_row_touse[:, media_idx]
 
         extra_features_data_scaled = np.vstack((self.extra_features_train_scaled, self.extra_features_test_scaled))
         extra_features_data_unscaled = self.extra_features_scaler.inverse_transform(extra_features_data_scaled)

@@ -86,6 +86,10 @@ class ModelTestCase(unittest.TestCase):
         data_to_fit_media_data = np.vstack(
             (data_to_fit.media_data_train_scaled, data_to_fit.media_data_test_scaled)
         )
+        data_to_fit_costs_by_row_data = np.vstack(
+            (data_to_fit.media_costs_by_row_train_scaled, data_to_fit.media_costs_by_row_test_scaled)
+        )
+
         data_to_fit_extra_features_data = np.vstack(
             (data_to_fit.extra_features_train_scaled, data_to_fit.extra_features_test_scaled)
         )
@@ -95,10 +99,12 @@ class ModelTestCase(unittest.TestCase):
         per_observation_df, per_channel_df = data_to_fit.to_data_frame()
 
         self.assertEqual(100, per_observation_df.shape[0])
-        self.assertEqual(2 + 3 + 1, per_observation_df.shape[1])
+        self.assertEqual(2 + 2 + 3 + 1, per_observation_df.shape[1])
 
         assert_array_almost_equal(per_observation_df["Channel1 volume"], data_to_fit_media_data[:, 0], decimal=3)
         assert_array_almost_equal(per_observation_df["Channel2 volume"], data_to_fit_media_data[:, 1], decimal=3)
+        assert_array_almost_equal(per_observation_df["Channel1 cost"], data_to_fit_costs_by_row_data[:, 0], decimal=3)
+        assert_array_almost_equal(per_observation_df["Channel2 cost"], data_to_fit_costs_by_row_data[:, 1], decimal=3)
 
         self.assertAlmostEqual(
             data_to_fit_media_data[1, 1],
@@ -117,10 +123,12 @@ class ModelTestCase(unittest.TestCase):
         per_observation_df, per_channel_df = data_to_fit.to_data_frame(unscaled=True)
 
         self.assertEqual(100, per_observation_df.shape[0])
-        self.assertEqual(2 + 3 + 1, per_observation_df.shape[1])
+        self.assertEqual(2 + 2 + 3 + 1, per_observation_df.shape[1])
 
         assert_array_almost_equal(per_observation_df["Channel1 volume"], input_data.media_data[:, 0], decimal=3)
         assert_array_almost_equal(per_observation_df["Channel2 volume"], input_data.media_data[:, 1], decimal=3)
+        assert_array_almost_equal(per_observation_df["Channel1 cost"], input_data.media_costs_by_row[:, 0], decimal=2)
+        assert_array_almost_equal(per_observation_df["Channel2 cost"], input_data.media_costs_by_row[:, 1], decimal=2)
 
         self.assertAlmostEqual(
             input_data.media_data[1, 1],
