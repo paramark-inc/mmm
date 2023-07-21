@@ -20,10 +20,7 @@ def make_results_dir(data_dir, dirname_fixed):
     seconds_since_midnight = now_date.hour * 3600 + now_date.minute * 60 + now_date.second
     hextoken = secrets.token_hex(4)
     results_dir = os.path.join(
-        data_dir,
-        "results",
-        dirname_fixed,
-        f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
+        data_dir, "results", dirname_fixed, f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
     )
     print(f"Creating directory '{results_dir}' for output")
     os.makedirs(results_dir, exist_ok=False)

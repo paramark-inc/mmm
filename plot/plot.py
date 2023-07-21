@@ -11,16 +11,18 @@ def _plot_one_metric(axs, idx, chart_name, granularity, time_axis, date_strs, va
     ax.plot(time_axis, values)
 
     xlim = ax.get_xlim()
-    ax.tick_params('x', labelbottom=True)
+    ax.tick_params("x", labelbottom=True)
 
     # add a second X axis with the date labels
     ax2 = ax.twiny()
     ax2.set_xlim(xlim)
-    ticks = [int(tick) for tick in ax.get_xticks() if tick >= 0. and int(tick) < date_strs.shape[0]]
+    ticks = [
+        int(tick) for tick in ax.get_xticks() if tick >= 0.0 and int(tick) < date_strs.shape[0]
+    ]
     ax2.set_xticks(ticks)
     ax2.set_xticklabels([date_strs[tick] for tick in ticks])
     ax2.set_xlabel("Date")
-    ax2.tick_params('x', labeltop=True, labelrotation=45)
+    ax2.tick_params("x", labeltop=True, labelrotation=45)
 
 
 def plot_all_metrics(input_data, output_dir, suffix):
@@ -38,10 +40,10 @@ def plot_all_metrics(input_data, output_dir, suffix):
 
     # add 1 for the target metric
     num_metrics = (
-            input_data.media_data.shape[1] +
-            input_data.media_costs_by_row.shape[1] +
-            input_data.extra_features_data.shape[1] +
-            1
+        input_data.media_data.shape[1]
+        + input_data.media_costs_by_row.shape[1]
+        + input_data.extra_features_data.shape[1]
+        + 1
     )
     fig, axs = plt.subplots(num_metrics, 1, sharex="all", figsize=(8, 4 * num_metrics))
 
@@ -64,8 +66,15 @@ def plot_all_metrics(input_data, output_dir, suffix):
     charts.append((input_data.target_name, input_data.target_data))
 
     for idx, (chart_name, values) in enumerate(charts):
-        _plot_one_metric(axs=axs, idx=idx, chart_name=chart_name, granularity=input_data.time_granularity,
-                         time_axis=time_axis, date_strs=input_data.date_strs, values=values)
+        _plot_one_metric(
+            axs=axs,
+            idx=idx,
+            chart_name=chart_name,
+            granularity=input_data.time_granularity,
+            time_axis=time_axis,
+            date_strs=input_data.date_strs,
+            values=values,
+        )
 
     # tight_layout will space the charts out evenly, vertically
     fig.tight_layout()

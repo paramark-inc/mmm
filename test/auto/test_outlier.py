@@ -15,20 +15,19 @@ class OutlierTestCase(unittest.TestCase):
             time_granularity=constants.GRANULARITY_DAILY,
             media_data=np.array(
                 [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [4.0, 4.0, 4.0]],
-                dtype=np.float64
+                dtype=np.float64,
             ),
             media_costs=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_costs_by_row=np.ndarray(shape=(0, 3)),
             media_priors=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_names=["Google", "Facebook", "Events"],
             extra_features_data=np.array(
-                [[5.0, 5.0], [6.0, 6.0], [7.0, 7.0], [8.0, 8.0]],
-                dtype=np.float64
+                [[5.0, 5.0], [6.0, 6.0], [7.0, 7.0], [8.0, 8.0]], dtype=np.float64
             ),
             extra_features_names=["Macro1", "Macro2"],
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
             target_is_log_scale=False,
-            target_name="Sales"
+            target_name="Sales",
         )
 
         media_data_outliers = {"Google": [0, 3]}
@@ -40,15 +39,16 @@ class OutlierTestCase(unittest.TestCase):
             media_data_outliers=media_data_outliers,
             extra_features_outliers=extra_features_outliers,
             target_outliers=target_outliers,
-            removal_type=constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN
+            removal_type=constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN,
         )
 
         expected_media_data = np.array(
-            [[2.5, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [2.5, 4.0, 4.0]],
-            dtype=np.float64
+            [[2.5, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [2.5, 4.0, 4.0]], dtype=np.float64
         )
         assert_array_almost_equal(expected_media_data, input_data_outliers_removed.media_data)
-        assert_array_almost_equal(input_data.extra_features_data, input_data_outliers_removed.extra_features_data)
+        assert_array_almost_equal(
+            input_data.extra_features_data, input_data_outliers_removed.extra_features_data
+        )
 
         expected_target_data = np.array([9.0, 10.5, 11.0, 12.0], dtype=np.float64)
         assert_array_almost_equal(expected_target_data, input_data_outliers_removed.target_data)
@@ -60,20 +60,19 @@ class OutlierTestCase(unittest.TestCase):
             time_granularity=constants.GRANULARITY_DAILY,
             media_data=np.array(
                 [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [4.0, 4.0, 4.0]],
-                dtype=np.float64
+                dtype=np.float64,
             ),
             media_costs=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_costs_by_row=np.ndarray(shape=(0, 3)),
             media_priors=np.array([100.0, 200.0, 300.0], dtype=np.float64),
             media_names=["Google", "Facebook", "Events"],
             extra_features_data=np.array(
-                [[5.0, 5.0], [6.0, 6.0], [7.0, 7.0], [8.0, 8.0]],
-                dtype=np.float64
+                [[5.0, 5.0], [6.0, 6.0], [7.0, 7.0], [8.0, 8.0]], dtype=np.float64
             ),
             extra_features_names=["Macro1", "Macro2"],
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
             target_is_log_scale=False,
-            target_name="Sales"
+            target_name="Sales",
         )
 
         media_data_outliers = {"Google": [0, 3]}
@@ -85,19 +84,20 @@ class OutlierTestCase(unittest.TestCase):
             media_data_outliers=media_data_outliers,
             extra_features_outliers=extra_features_outliers,
             target_outliers=target_outliers,
-            removal_type=constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE
+            removal_type=constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE,
         )
 
         expected_media_data = np.array(
-            [[1.3, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [1.3, 4.0, 4.0]],
-            dtype=np.float64
+            [[1.3, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [1.3, 4.0, 4.0]], dtype=np.float64
         )
         assert_array_almost_equal(expected_media_data, input_data_outliers_removed.media_data)
-        assert_array_almost_equal(input_data.extra_features_data, input_data_outliers_removed.extra_features_data)
+        assert_array_almost_equal(
+            input_data.extra_features_data, input_data_outliers_removed.extra_features_data
+        )
 
         expected_target_data = np.array([9.0, 9.3, 11.0, 12.0], dtype=np.float64)
         assert_array_almost_equal(expected_target_data, input_data_outliers_removed.target_data)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,11 @@ def print_outliers(input_data, output_dir, suffix):
 
     for extra_feature_idx in range(input_data.extra_features_data.shape[1]):
         metric_names_and_values.append(
-            (input_data.extra_features_names[extra_feature_idx], input_data.extra_features_data[:, extra_feature_idx]))
+            (
+                input_data.extra_features_names[extra_feature_idx],
+                input_data.extra_features_data[:, extra_feature_idx],
+            )
+        )
 
     metric_names_and_values.append((input_data.target_name, input_data.target_data))
 
@@ -36,19 +40,23 @@ def print_outliers(input_data, output_dir, suffix):
             else:
                 outliers_file.write("\n")
             outliers_file.write(f"{name}:\n")
-            df = pd.DataFrame({'values': data})
-            mean = df['values'].mean()
-            stddev = df['values'].std()
+            df = pd.DataFrame({"values": data})
+            mean = df["values"].mean()
+            stddev = df["values"].std()
             # mean and stddev are floats so this is a floating point operation
-            outliers = df['values'][(df['values'] > (mean + 2 * stddev)) | (df['values'] < (mean - 2 * stddev))]
+            outliers = df["values"][
+                (df["values"] > (mean + 2 * stddev)) | (df["values"] < (mean - 2 * stddev))
+            ]
 
             outliers_file.write(f"stddev method (mean={mean:,.2f} stddev={stddev:,.2f}):\n")
             for i, v in outliers.items():
                 stddevs_from_mean = np.absolute(v - mean) / stddev
-                outliers_file.write(f"index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}\n")
+                outliers_file.write(
+                    f"index={i:4d} value={v:14,.0f} stddevs from mean={stddevs_from_mean:.2f}\n"
+                )
 
             outliers_file.write(f"\nSmallest 10 values:\n")
-            sortedvalues = df['values'].sort_values(ascending=True)
+            sortedvalues = df["values"].sort_values(ascending=True)
             for i, v in sortedvalues.head(10).items():
                 outliers_file.write(f"index={i:4d} value={v:14,.0f}\n")
             outliers_file.write(f"\nLargest 10 values:\n")
@@ -111,7 +119,9 @@ def _replace_outlier_editor_func(context, date_strs, media_data, extra_features_
         target_data[outlier_idx] = target_val
 
 
-def remove_outliers_from_input(input_data, media_data_outliers, extra_features_outliers, target_outliers, removal_type):
+def remove_outliers_from_input(
+    input_data, media_data_outliers, extra_features_outliers, target_outliers, removal_type
+):
     """
     Generate a new input_data with outliers removed.
 
@@ -123,19 +133,19 @@ def remove_outliers_from_input(input_data, media_data_outliers, extra_features_o
     :return: new InputData instance
     """
 
-    assert removal_type in (constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN,
-                            constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE), f"{removal_type}"
+    assert removal_type in (
+        constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_TRIMMED_MEAN,
+        constants.REMOVE_OUTLIERS_TYPE_REPLACE_WITH_P10_VALUE,
+    ), f"{removal_type}"
 
     context = {
         "removal_type": removal_type,
         "old_input_data": input_data,
         "media_data_outliers": media_data_outliers,
         "extra_features_outliers": extra_features_outliers,
-        "target_outliers": target_outliers
+        "target_outliers": target_outliers,
     }
 
     return InputData.clone_with_data_edits(
-        input_data=input_data,
-        editor_func=_replace_outlier_editor_func,
-        context=context
+        input_data=input_data, editor_func=_replace_outlier_editor_func, context=context
     )

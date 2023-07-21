@@ -11,7 +11,7 @@ from ..impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_model_fit,
     plot_out_of_sample_model_fit,
     plot_prior_and_posterior,
-    plot_response_curves
+    plot_response_curves,
 )
 
 from ..impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
@@ -42,11 +42,11 @@ def describe_config(output_dir, config, git_sha):
     :return:
     """
     output_fname = os.path.join(output_dir, "git_sha.txt")
-    with open(output_fname, 'w') as f:
+    with open(output_fname, "w") as f:
         f.write(git_sha)
 
     output_fname = os.path.join(output_dir, "config.yaml")
-    with open(output_fname, 'w') as f:
+    with open(output_fname, "w") as f:
         f.write(config)
 
 
@@ -60,7 +60,7 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
     :param results_dir: results directory
     """
     output_fname = os.path.join(results_dir, "media_contribution_and_roi_by_channel.txt")
-    with open(output_fname, 'w') as f:
+    with open(output_fname, "w") as f:
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
             f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.6f}\n")
@@ -76,7 +76,9 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
 
-def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_seasonality, results_dir):
+def _dump_baseline_breakdown(
+    media_mix_model, input_data, data_to_fit, degrees_seasonality, results_dir
+):
     """
     Break down the baseline into its component pieces and write the results to a text file.
 
@@ -137,7 +139,7 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
         number_periods=num_observations,
         degrees=degrees_seasonality,
         frequency=frequency,
-        gamma_seasonality=gamma_seasonality
+        gamma_seasonality=gamma_seasonality,
     )
 
     data = np.zeros(shape=(num_observations, len(columns)))
@@ -145,16 +147,14 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
     if data_to_fit.extra_features_train_scaled.shape[1]:
         extra_features_einsum = "tf, f -> tf"  # t = time, f = feature
         extra_features_mult = jnp.einsum(
-            extra_features_einsum,
-            data_to_fit.extra_features_train_scaled,
-            coef_extra_features
+            extra_features_einsum, data_to_fit.extra_features_train_scaled, coef_extra_features
         )
     else:
         extra_features_mult = None
 
     for i in range(num_observations):
         data[i, columns.index("intercept")] = intercept
-        data[i, columns.index("trend")] = coef_trend * i ** expo_trend
+        data[i, columns.index("trend")] = coef_trend * i**expo_trend
         data[i, columns.index("seasonality")] = seasonality_by_obs[i]
         if weekday is not None:
             data[i, columns.index("weekday")] = weekday[i % 7]
@@ -173,7 +173,9 @@ def _dump_baseline_breakdown(media_mix_model, input_data, data_to_fit, degrees_s
         f.write(f"seasonality={baseline_breakdown_df['seasonality'].mean():,.4f}\n")
         for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
             extra_feature_name = data_to_fit.extra_features_names[j]
-            f.write(f"{extra_feature_name}={baseline_breakdown_df[extra_feature_name].mean():,.4f}\n")
+            f.write(
+                f"{extra_feature_name}={baseline_breakdown_df[extra_feature_name].mean():,.4f}\n"
+            )
         if weekday is not None:
             f.write(f"weekday={baseline_breakdown_df['weekday'].mean():,.4f}\n")
         f.write(f"baseline={baseline_breakdown_df['baseline'].mean():,.4f}\n")
@@ -197,7 +199,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     :return:
     """
     output_fname = os.path.join(results_dir, "model_coefficients.txt")
-    with open(output_fname, 'w') as f:
+    with open(output_fname, "w") as f:
         with redirect_stdout(f):
             mmm.print_summary()
 
@@ -214,7 +216,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         media_mix_model=mmm,
         media_scaler=data_to_fit.media_scaler,
         target_scaler=data_to_fit.target_scaler,
-        prices=media_cost_per_unscaled_unit
+        prices=media_cost_per_unscaled_unit,
     )
     output_fname = os.path.join(results_dir, "response_curves.png")
     fig.savefig(output_fname)
@@ -224,28 +226,25 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     fig.savefig(output_fname)
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        unscaled_costs=input_data.media_costs,
-        target_scaler=data_to_fit.target_scaler
+        unscaled_costs=input_data.media_costs, target_scaler=data_to_fit.target_scaler
     )
     _dump_posterior_metrics(
         input_data=input_data,
         media_effect_hat=media_effect_hat,
         roi_hat=roi_hat,
-        results_dir=results_dir
+        results_dir=results_dir,
     )
 
     fig = plot_bars_media_metrics(
         metric=media_effect_hat,
         metric_name="contribution percentage",
-        channel_names=data_to_fit.media_names
+        channel_names=data_to_fit.media_names,
     )
     output_fname = os.path.join(results_dir, "media_contribution_by_channel.png")
     fig.savefig(output_fname)
 
     fig = plot_bars_media_metrics(
-        metric=roi_hat,
-        metric_name="ROI",
-        channel_names=data_to_fit.media_names
+        metric=roi_hat, metric_name="ROI", channel_names=data_to_fit.media_names
     )
     output_fname = os.path.join(results_dir, "roi_by_channel.png")
     fig.savefig(output_fname)
@@ -255,11 +254,13 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         input_data=input_data,
         data_to_fit=data_to_fit,
         degrees_seasonality=degrees_seasonality,
-        results_dir=results_dir
+        results_dir=results_dir,
     )
 
     fig = plot_media_baseline_contribution_area_plot(
-        media_mix_model=mmm, target_scaler=data_to_fit.target_scaler, channel_names=data_to_fit.media_names
+        media_mix_model=mmm,
+        target_scaler=data_to_fit.target_scaler,
+        channel_names=data_to_fit.media_names,
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
     fig.savefig(output_fname)
@@ -282,10 +283,12 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
     prediction = mmm.predict(
         media=data_to_fit.media_data_test_scaled,
         extra_features=extra_features,
-        target_scaler=data_to_fit.target_scaler
+        target_scaler=data_to_fit.target_scaler,
     )
 
-    target_test_unscaled = data_to_fit.target_scaler.inverse_transform(data_to_fit.target_test_scaled)
+    target_test_unscaled = data_to_fit.target_scaler.inverse_transform(
+        data_to_fit.target_test_scaled
+    )
     fig = plot_out_of_sample_model_fit(
         out_of_sample_predictions=prediction,
         out_of_sample_target=target_test_unscaled,

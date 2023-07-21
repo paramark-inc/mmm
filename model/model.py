@@ -18,19 +18,24 @@ class InputData:
     """
 
     @staticmethod
-    def _validate(date_strs,
-                  time_granularity,
-                  media_data,
-                  media_costs,
-                  media_priors,
-                  media_names,
-                  extra_features_data,
-                  extra_features_names,
-                  target_data,
-                  target_name):
+    def _validate(
+        date_strs,
+        time_granularity,
+        media_data,
+        media_costs,
+        media_priors,
+        media_names,
+        extra_features_data,
+        extra_features_names,
+        target_data,
+        target_name,
+    ):
         num_observations = date_strs.shape[0]
 
-        assert time_granularity in (constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY), f"{time_granularity}"
+        assert time_granularity in (
+            constants.GRANULARITY_DAILY,
+            constants.GRANULARITY_WEEKLY,
+        ), f"{time_granularity}"
 
         assert 2 == media_data.ndim, f"{media_data.ndim}"
         assert num_observations == media_data.shape[0], f"{num_observations} {media_data.shape[0]}"
@@ -54,13 +59,18 @@ class InputData:
         assert 2 == extra_features_data.ndim, f"{extra_features_data.ndim}"
         num_extra_features = extra_features_data.shape[1]
         if num_extra_features:
-            assert num_observations == extra_features_data.shape[
-                0], f"{num_observations} {extra_features_data.shape[0]}"
+            assert (
+                num_observations == extra_features_data.shape[0]
+            ), f"{num_observations} {extra_features_data.shape[0]}"
 
-        assert num_extra_features == len(extra_features_names), f"{num_extra_features} {len(extra_features_names)}"
+        assert num_extra_features == len(
+            extra_features_names
+        ), f"{num_extra_features} {len(extra_features_names)}"
 
         assert 1 == target_data.ndim, f"{target_data.ndim}"
-        assert num_observations == target_data.shape[0], f"{num_observations} {target_data.shape[0]}"
+        assert (
+            num_observations == target_data.shape[0]
+        ), f"{num_observations} {target_data.shape[0]}"
         assert np.float64 == target_data.dtype, f"{np.float64} {target_data.dtype}"
 
         assert target_name
@@ -88,7 +98,7 @@ class InputData:
             date_strs=date_strs_copy,
             media_data=media_data_copy,
             extra_features_data=extra_features_data_copy,
-            target_data=target_data_copy
+            target_data=target_data_copy,
         )
 
         return InputData(
@@ -103,24 +113,24 @@ class InputData:
             extra_features_names=input_data.extra_features_names.copy(),
             target_data=target_data_copy,
             target_is_log_scale=input_data.target_is_log_scale,
-            target_name=input_data.target_name
+            target_name=input_data.target_name,
         )
 
     # TODO change dates from strings to numpy datetimes to ensure common formatting
     def __init__(
-            self,
-            date_strs,
-            time_granularity,
-            media_data,
-            media_costs,
-            media_costs_by_row,
-            media_priors,
-            media_names,
-            extra_features_data,
-            extra_features_names,
-            target_data,
-            target_is_log_scale,
-            target_name
+        self,
+        date_strs,
+        time_granularity,
+        media_data,
+        media_costs,
+        media_costs_by_row,
+        media_priors,
+        media_names,
+        extra_features_data,
+        extra_features_names,
+        target_data,
+        target_is_log_scale,
+        target_name,
     ):
         """
         :param date_strs: 1-d numpy array of labels for each time series data point
@@ -139,10 +149,18 @@ class InputData:
         :param target_is_log_scale: True if target metric is log scale, False otherwise
         :param target_name: name of target metric
         """
-        InputData._validate(date_strs=date_strs, time_granularity=time_granularity, media_data=media_data,
-                            media_costs=media_costs, media_priors=media_priors, media_names=media_names,
-                            extra_features_data=extra_features_data, extra_features_names=extra_features_names,
-                            target_data=target_data, target_name=target_name)
+        InputData._validate(
+            date_strs=date_strs,
+            time_granularity=time_granularity,
+            media_data=media_data,
+            media_costs=media_costs,
+            media_priors=media_priors,
+            media_names=media_names,
+            extra_features_data=extra_features_data,
+            extra_features_names=extra_features_names,
+            target_data=target_data,
+            target_name=target_name,
+        )
 
         self.date_strs = date_strs
         self.time_granularity = time_granularity
@@ -164,7 +182,7 @@ class InputData:
         :param media_name: channel name
         :return: sanititized name
         """
-        return media_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
+        return media_name.lower().replace(" ", "_").replace("(", "").replace(")", "")
 
     def dump(self, output_dir, suffix, verbose=False):
         """
@@ -202,18 +220,26 @@ class InputData:
                 with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
                     for idx, val in enumerate(self.media_data[:, media_idx]):
                         dstr = self.date_strs[idx]
-                        media_data_file.write(f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
+                        media_data_file.write(
+                            f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
+                        )
 
             for media_idx, media_name in enumerate(self.media_names):
                 media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}_costs.txt"
                 with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
                     for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
                         dstr = self.date_strs[idx]
-                        media_costs_file.write(f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n")
+                        media_costs_file.write(
+                            f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
+                        )
 
             for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                extra_features_fname = f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
-                with open(os.path.join(output_dir, extra_features_fname), "w") as extra_features_file:
+                extra_features_fname = (
+                    f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
+                )
+                with open(
+                    os.path.join(output_dir, extra_features_fname), "w"
+                ) as extra_features_file:
                     for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
                         dstr = self.date_strs[idx]
                         extra_features_file.write(
@@ -247,7 +273,7 @@ class InputData:
             extra_features_names=extra_features_names,
             target_data=self.target_data.copy(),
             target_is_log_scale=self.target_is_log_scale,
-            target_name=self.target_name
+            target_name=self.target_name,
         )
 
     @staticmethod
@@ -274,18 +300,26 @@ class InputData:
 
         date_strs_weekly = self.date_strs.copy()[::7]
 
-        media_data_dict = {name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)}
+        media_data_dict = {
+            name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)
+        }
         media_df_daily = pd.DataFrame(data=media_data_dict)
         media_df_weekly = media_df_daily.groupby(by=InputData._group_by_week).sum()
 
-        media_costs_data_dict = {name: self.media_costs_by_row[:, idx] for idx, name in enumerate(self.media_names)}
+        media_costs_data_dict = {
+            name: self.media_costs_by_row[:, idx] for idx, name in enumerate(self.media_names)
+        }
         media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
         media_costs_df_weekly = media_costs_df_daily.groupby(by=InputData._group_by_week).sum()
 
-        extra_features_data_dict = {name: self.extra_features_data[:, idx] for idx, name in
-                                    enumerate(self.extra_features_names)}
+        extra_features_data_dict = {
+            name: self.extra_features_data[:, idx]
+            for idx, name in enumerate(self.extra_features_names)
+        }
         extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
-        extra_features_df_weekly = extra_features_df_daily.groupby(by=InputData._group_by_week).sum()
+        extra_features_df_weekly = extra_features_df_daily.groupby(
+            by=InputData._group_by_week
+        ).sum()
 
         target_data_dict = {self.target_name: self.target_data}
         target_df_daily = pd.DataFrame(data=target_data_dict)
@@ -338,10 +372,12 @@ class InputData:
             extra_features_names=self.extra_features_names.copy(),
             target_data=np.log(self.target_data),
             target_is_log_scale=True,
-            target_name=self.target_name + " (log-transformed)"
+            target_name=self.target_name + " (log-transformed)",
         )
 
-    def clone_and_split_media_data(self, channel_idx, split_obs_idx, media_before_name, media_after_name):
+    def clone_and_split_media_data(
+        self, channel_idx, split_obs_idx, media_before_name, media_after_name
+    ):
         """
         clone this input_data and split the given media column around a split point.  "Split" means to create
         a new media column, place the data starting at 'media_idx' in the new column, and fill empty values with
@@ -354,9 +390,9 @@ class InputData:
         :return:
         """
         media_names = (
-                self.media_names[0:channel_idx] +
-                [media_before_name, media_after_name] +
-                self.media_names[channel_idx + 1:]
+            self.media_names[0:channel_idx]
+            + [media_before_name, media_after_name]
+            + self.media_names[channel_idx + 1 :]
         )
 
         media_data_before_column = self.media_data[:, channel_idx].copy()
@@ -368,24 +404,26 @@ class InputData:
         media_data[:, :channel_idx] = self.media_data[:, :channel_idx]
         media_data[:, channel_idx] = media_data_before_column
         media_data[:, channel_idx + 1] = media_data_after_column
-        media_data[:, channel_idx + 2:] = self.media_data[:, channel_idx + 1:]
+        media_data[:, channel_idx + 2 :] = self.media_data[:, channel_idx + 1 :]
 
         media_costs_by_row_before_column = self.media_costs_by_row[:, channel_idx].copy()
         media_costs_by_row_before_column[split_obs_idx:] = 0.0
         media_costs_by_row_after_column = self.media_costs_by_row[:, channel_idx].copy()
         media_costs_by_row_after_column[:split_obs_idx] = 0.0
 
-        media_costs_by_row = np.zeros(shape=(self.media_costs_by_row.shape[0], self.media_costs_by_row.shape[1] + 1))
+        media_costs_by_row = np.zeros(
+            shape=(self.media_costs_by_row.shape[0], self.media_costs_by_row.shape[1] + 1)
+        )
         media_costs_by_row[:, :channel_idx] = self.media_costs_by_row[:, :channel_idx]
         media_costs_by_row[:, channel_idx] = media_costs_by_row_before_column
         media_costs_by_row[:, channel_idx + 1] = media_costs_by_row_after_column
-        media_costs_by_row[:, channel_idx + 2:] = self.media_costs_by_row[:, channel_idx + 1:]
+        media_costs_by_row[:, channel_idx + 2 :] = self.media_costs_by_row[:, channel_idx + 1 :]
 
         media_costs = np.zeros(shape=(self.media_costs.shape[0] + 1,))
         media_costs[:channel_idx] = self.media_costs[:channel_idx]
         media_costs[channel_idx] = media_costs_by_row_before_column.sum()
         media_costs[channel_idx + 1] = media_costs_by_row_after_column.sum()
-        media_costs[channel_idx + 2:] = self.media_costs[channel_idx + 1:]
+        media_costs[channel_idx + 2 :] = self.media_costs[channel_idx + 1 :]
 
         media_priors = np.zeros(shape=(self.media_priors.shape[0] + 1,))
         media_priors[:channel_idx] = self.media_priors[:channel_idx]
@@ -395,7 +433,7 @@ class InputData:
         split_point_pct = split_obs_idx / self.media_data.shape[0]
         media_priors[channel_idx] = self.media_priors[channel_idx] * split_point_pct
         media_priors[channel_idx + 1] = self.media_priors[channel_idx] * (1 - split_point_pct)
-        media_priors[channel_idx + 2:] = self.media_priors[channel_idx + 1:]
+        media_priors[channel_idx + 2 :] = self.media_priors[channel_idx + 1 :]
 
         return InputData(
             date_strs=self.date_strs.copy(),
@@ -455,12 +493,20 @@ class DataToFit:
 
         # Scale data (ignoring the zeroes in the media data).  Call fit_transform only the first time because only one
         # scaling constant is stored in the scaler.
-        media_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
-        extra_features_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
-        target_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+        media_scaler = preprocessing.CustomScaler(
+            divide_operation=DataToFit._robust_scaling_divide_operation
+        )
+        extra_features_scaler = preprocessing.CustomScaler(
+            divide_operation=DataToFit._robust_scaling_divide_operation
+        )
+        target_scaler = preprocessing.CustomScaler(
+            divide_operation=DataToFit._robust_scaling_divide_operation
+        )
 
         # scale cost up by N since fit() will divide it by number of time periods
-        media_cost_scaler = preprocessing.CustomScaler(divide_operation=DataToFit._robust_scaling_divide_operation)
+        media_cost_scaler = preprocessing.CustomScaler(
+            divide_operation=DataToFit._robust_scaling_divide_operation
+        )
 
         media_data_train_scaled = media_scaler.fit_transform(media_data_train)
         media_data_test_scaled = media_scaler.transform(media_data_test)
@@ -494,31 +540,31 @@ class DataToFit:
             target_test_scaled=target_test_scaled,
             target_is_log_scale=input_data.target_is_log_scale,
             target_scaler=target_scaler,
-            target_name=input_data.target_name
+            target_name=input_data.target_name,
         )
 
     def __init__(
-            self,
-            date_strs,
-            time_granularity,
-            media_data_train_scaled,
-            media_data_test_scaled,
-            media_scaler,
-            media_costs_scaled,
-            media_priors_scaled,
-            media_costs_by_row_train_scaled,
-            media_costs_by_row_test_scaled,
-            media_costs_scaler,
-            media_names,
-            extra_features_train_scaled,
-            extra_features_test_scaled,
-            extra_features_scaler,
-            extra_features_names,
-            target_train_scaled,
-            target_test_scaled,
-            target_is_log_scale,
-            target_scaler,
-            target_name
+        self,
+        date_strs,
+        time_granularity,
+        media_data_train_scaled,
+        media_data_test_scaled,
+        media_scaler,
+        media_costs_scaled,
+        media_priors_scaled,
+        media_costs_by_row_train_scaled,
+        media_costs_by_row_test_scaled,
+        media_costs_scaler,
+        media_names,
+        extra_features_train_scaled,
+        extra_features_test_scaled,
+        extra_features_scaler,
+        extra_features_names,
+        target_train_scaled,
+        target_test_scaled,
+        target_is_log_scale,
+        target_scaler,
+        target_name,
     ):
         self.date_strs = date_strs
         self.time_granularity = time_granularity
@@ -558,23 +604,32 @@ class DataToFit:
             observation_data_by_column_name[col_name] = media_data_touse[:, media_idx]
 
         media_costs_by_row_scaled = np.vstack(
-            (
-                self.media_costs_by_row_train_scaled,
-                self.media_costs_by_row_test_scaled
-            )
+            (self.media_costs_by_row_train_scaled, self.media_costs_by_row_test_scaled)
         )
-        media_costs_by_row_unscaled = self.media_costs_scaler.inverse_transform(media_costs_by_row_scaled)
+        media_costs_by_row_unscaled = self.media_costs_scaler.inverse_transform(
+            media_costs_by_row_scaled
+        )
         for media_idx in range(n_media_channels):
             col_name = f"{self.media_names[media_idx]} cost"
-            media_costs_by_row_touse = media_costs_by_row_unscaled if unscaled else media_costs_by_row_scaled
+            media_costs_by_row_touse = (
+                media_costs_by_row_unscaled if unscaled else media_costs_by_row_scaled
+            )
             observation_data_by_column_name[col_name] = media_costs_by_row_touse[:, media_idx]
 
-        extra_features_data_scaled = np.vstack((self.extra_features_train_scaled, self.extra_features_test_scaled))
-        extra_features_data_unscaled = self.extra_features_scaler.inverse_transform(extra_features_data_scaled)
+        extra_features_data_scaled = np.vstack(
+            (self.extra_features_train_scaled, self.extra_features_test_scaled)
+        )
+        extra_features_data_unscaled = self.extra_features_scaler.inverse_transform(
+            extra_features_data_scaled
+        )
         for extra_features_idx in range(extra_features_data_scaled.shape[1]):
             col_name = self.extra_features_names[extra_features_idx]
-            extra_features_data_touse = extra_features_data_unscaled if unscaled else extra_features_data_scaled
-            observation_data_by_column_name[col_name] = extra_features_data_touse[:, extra_features_idx]
+            extra_features_data_touse = (
+                extra_features_data_unscaled if unscaled else extra_features_data_scaled
+            )
+            observation_data_by_column_name[col_name] = extra_features_data_touse[
+                :, extra_features_idx
+            ]
 
         target_data_scaled = np.hstack((self.target_train_scaled, self.target_test_scaled))
         target_data_unscaled = self.target_scaler.inverse_transform(target_data_scaled)
@@ -586,7 +641,7 @@ class DataToFit:
             data=observation_data_by_column_name,
             index=pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
             dtype=np.float64,
-            copy=True
+            copy=True,
         )
 
         channel_data_by_column_name = {}
@@ -600,10 +655,7 @@ class DataToFit:
         channel_data_by_column_name["Prior"] = media_priors_touse
 
         per_channel_df = pd.DataFrame(
-            data=channel_data_by_column_name,
-            index=self.media_names,
-            dtype=np.float64,
-            copy=True
+            data=channel_data_by_column_name, index=self.media_names, dtype=np.float64, copy=True
         )
 
         return per_observation_df, per_channel_df

@@ -9,13 +9,13 @@ import yaml
 
 # noinspection GrazieInspection
 def fit_lightweight_mmm(
-        data_to_fit,
-        model_name,
-        results_dir,
-        degrees_seasonality=2,
-        weekday_seasonality=None,
-        number_warmup=2000,
-        number_samples=2000,
+    data_to_fit,
+    model_name,
+    results_dir,
+    degrees_seasonality=2,
+    weekday_seasonality=None,
+    number_warmup=2000,
+    number_samples=2000,
 ):
     """
     fit a lightweight mmm model to input_data
@@ -37,7 +37,7 @@ def fit_lightweight_mmm(
     assert model_name in (
         constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_ADSTOCK,
         constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_HILL_ADSTOCK,
-        constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_CARRYOVER
+        constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_CARRYOVER,
     ), model_name
 
     # train the model
@@ -57,10 +57,14 @@ def fit_lightweight_mmm(
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
-    fit_params["seasonality_frequency"] = 365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52
+    fit_params["seasonality_frequency"] = (
+        365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52
+    )
 
     if weekday_seasonality is None:
-        fit_params["weekday_seasonality"] = True if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else False
+        fit_params["weekday_seasonality"] = (
+            True if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else False
+        )
     else:
         fit_params["weekday_seasonality"] = weekday_seasonality
 
@@ -77,10 +81,12 @@ def fit_lightweight_mmm(
     # remove parameter(s) that we want to write, but don't want in fit()
     del fit_params["model_name"]
 
-    mmm.fit(media=data_to_fit.media_data_train_scaled,
-            media_names=data_to_fit.media_names,
-            extra_features=extra_features,
-            target=data_to_fit.target_train_scaled,
-            **fit_params)
+    mmm.fit(
+        media=data_to_fit.media_data_train_scaled,
+        media_names=data_to_fit.media_names,
+        extra_features=extra_features,
+        target=data_to_fit.target_train_scaled,
+        **fit_params
+    )
 
     return mmm
