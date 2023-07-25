@@ -217,6 +217,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         media_scaler=data_to_fit.media_scaler,
         target_scaler=data_to_fit.target_scaler,
         prices=media_cost_per_unscaled_unit,
+        percentage_add=0.0,
     )
     output_fname = os.path.join(results_dir, "response_curves.png")
     fig.savefig(output_fname)
