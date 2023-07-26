@@ -211,12 +211,14 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     output_fname = os.path.join(results_dir, "model_media_posteriors.png")
     fig.savefig(output_fname)
 
-    media_cost_per_unscaled_unit = input_data.media_costs / np.sum(input_data.media_data, axis=0)
+    costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
+        data_to_fit.media_costs_by_row_train_scaled
+    )
     fig = plot_response_curves(
         media_mix_model=mmm,
         media_scaler=data_to_fit.media_scaler,
         target_scaler=data_to_fit.target_scaler,
-        prices=media_cost_per_unscaled_unit,
+        costs_per_day=costs_per_day_unscaled,
         percentage_add=0.0,
     )
     output_fname = os.path.join(results_dir, "response_curves.png")
