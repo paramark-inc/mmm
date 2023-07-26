@@ -241,7 +241,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     fig.savefig(output_fname)
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        unscaled_costs=input_data.media_costs, target_scaler=data_to_fit.target_scaler
+        unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
     )
     _dump_posterior_metrics(
         input_data=input_data,
