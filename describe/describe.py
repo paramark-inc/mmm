@@ -220,8 +220,20 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         target_scaler=data_to_fit.target_scaler,
         costs_per_day=costs_per_day_unscaled,
         percentage_add=0.0,
+        response_metric="target",
     )
-    output_fname = os.path.join(results_dir, "response_curves.png")
+    output_fname = os.path.join(results_dir, "response_curves_target.png")
+    fig.savefig(output_fname)
+
+    fig = plot_response_curves(
+        media_mix_model=mmm,
+        media_scaler=data_to_fit.media_scaler,
+        target_scaler=data_to_fit.target_scaler,
+        costs_per_day=costs_per_day_unscaled,
+        percentage_add=0.0,
+        response_metric="cost_per_target",
+    )
+    output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
     fig.savefig(output_fname)
 
     fig = plot_prior_and_posterior(media_mix_model=mmm)
