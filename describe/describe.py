@@ -50,13 +50,14 @@ def describe_config(output_dir, config, git_sha):
         f.write(config)
 
 
-def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
+def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, cpa_hat, results_dir):
     """
     write posterior metrics to a file
 
     :param input_data: InputData instance
     :param media_effect_hat: see LightweightMMM.get_posterior_metrics
     :param roi_hat: see LightweightMMM.get_posterior_metrics
+    :param cpa_hat: the inverse of ROI hat
     :param results_dir: results directory
     """
     output_fname = os.path.join(results_dir, "media_contribution_and_roi_by_channel.txt")
@@ -73,6 +74,13 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, results_dir):
             f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.6f}\n")
             f.write(f"median={np.median(roi_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
+            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
+
+        for media_idx in range(input_data.media_data.shape[1]):
+            f.write(f"{input_data.media_names[media_idx]} CPA:\n")
+            f.write(f"mean={np.mean(cpa_hat[:, media_idx]):,.6f}\n")
+            f.write(f"median={np.median(cpa_hat[:, media_idx]):,.6f}\n")
+            quantiles = np.quantile(cpa_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
 
@@ -243,10 +251,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
         unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
     )
+    cpa_hat = 1.0 / roi_hat
     _dump_posterior_metrics(
         input_data=input_data,
         media_effect_hat=media_effect_hat,
         roi_hat=roi_hat,
+        cpa_hat=cpa_hat,
         results_dir=results_dir,
     )
 
@@ -254,14 +264,48 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         metric=media_effect_hat,
         metric_name="contribution percentage",
         channel_names=data_to_fit.media_names,
+        bar_height="mean",
     )
-    output_fname = os.path.join(results_dir, "media_contribution_by_channel.png")
+    output_fname = os.path.join(results_dir, "media_contribution_by_channel_mean.png")
     fig.savefig(output_fname)
 
     fig = plot_bars_media_metrics(
-        metric=roi_hat, metric_name="ROI", channel_names=data_to_fit.media_names
+        metric=media_effect_hat,
+        metric_name="contribution percentage",
+        channel_names=data_to_fit.media_names,
+        bar_height="median",
     )
-    output_fname = os.path.join(results_dir, "roi_by_channel.png")
+    output_fname = os.path.join(results_dir, "media_contribution_by_channel_median.png")
+    fig.savefig(output_fname)
+
+    fig = plot_bars_media_metrics(
+        metric=roi_hat, metric_name="ROI", channel_names=data_to_fit.media_names, bar_height="mean"
+    )
+    output_fname = os.path.join(results_dir, "roi_by_channel_mean.png")
+    fig.savefig(output_fname)
+
+    fig = plot_bars_media_metrics(
+        metric=roi_hat,
+        metric_name="ROI",
+        channel_names=data_to_fit.media_names,
+        bar_height="median",
+    )
+    output_fname = os.path.join(results_dir, "roi_by_channel_median.png")
+    fig.savefig(output_fname)
+
+    fig = plot_bars_media_metrics(
+        metric=cpa_hat, metric_name="CPA", channel_names=data_to_fit.media_names, bar_height="mean"
+    )
+    output_fname = os.path.join(results_dir, "cpa_by_channel_mean.png")
+    fig.savefig(output_fname)
+
+    fig = plot_bars_media_metrics(
+        metric=cpa_hat,
+        metric_name="CPA",
+        channel_names=data_to_fit.media_names,
+        bar_height="median",
+    )
+    output_fname = os.path.join(results_dir, "cpa_by_channel_median.png")
     fig.savefig(output_fname)
 
     _dump_baseline_breakdown(
