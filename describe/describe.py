@@ -50,17 +50,19 @@ def describe_config(output_dir, config, git_sha):
         f.write(config)
 
 
-def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, cpa_hat, results_dir):
+def _dump_posterior_metrics(
+    input_data, media_effect_hat, roi_hat, cost_per_target_hat, results_dir
+):
     """
     write posterior metrics to a file
 
     :param input_data: InputData instance
     :param media_effect_hat: see LightweightMMM.get_posterior_metrics
     :param roi_hat: see LightweightMMM.get_posterior_metrics
-    :param cpa_hat: the inverse of ROI hat
+    :param cost_per_target_hat: the inverse of ROI hat (cost per target)
     :param results_dir: results directory
     """
-    output_fname = os.path.join(results_dir, "media_contribution_and_roi_by_channel.txt")
+    output_fname = os.path.join(results_dir, "media_performance_breakdown.txt")
     with open(output_fname, "w") as f:
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
@@ -77,10 +79,10 @@ def _dump_posterior_metrics(input_data, media_effect_hat, roi_hat, cpa_hat, resu
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
         for media_idx in range(input_data.media_data.shape[1]):
-            f.write(f"{input_data.media_names[media_idx]} CPA:\n")
-            f.write(f"mean={np.mean(cpa_hat[:, media_idx]):,.6f}\n")
-            f.write(f"median={np.median(cpa_hat[:, media_idx]):,.6f}\n")
-            quantiles = np.quantile(cpa_hat[:, media_idx], [0.05, 0.95])
+            f.write(f"{input_data.media_names[media_idx]} cost per target:\n")
+            f.write(f"mean={np.mean(cost_per_target_hat[:, media_idx]):,.6f}\n")
+            f.write(f"median={np.median(cost_per_target_hat[:, media_idx]):,.6f}\n")
+            quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
 
@@ -213,11 +215,11 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
 
     fig = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
     output_fname = os.path.join(results_dir, "model_fit_in_sample.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
     output_fname = os.path.join(results_dir, "model_media_posteriors.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
     costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
@@ -231,7 +233,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         response_metric="target",
     )
     output_fname = os.path.join(results_dir, "response_curves_target.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_response_curves(
         media_mix_model=mmm,
@@ -242,21 +244,21 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         response_metric="cost_per_target",
     )
     output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_prior_and_posterior(media_mix_model=mmm)
     output_fname = os.path.join(results_dir, "model_priors_and_posteriors.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
         unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
     )
-    cpa_hat = 1.0 / roi_hat
+    cost_per_target_hat = 1.0 / roi_hat
     _dump_posterior_metrics(
         input_data=input_data,
         media_effect_hat=media_effect_hat,
         roi_hat=roi_hat,
-        cpa_hat=cpa_hat,
+        cost_per_target_hat=cost_per_target_hat,
         results_dir=results_dir,
     )
 
@@ -266,8 +268,8 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         channel_names=data_to_fit.media_names,
         bar_height="mean",
     )
-    output_fname = os.path.join(results_dir, "media_contribution_by_channel_mean.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_contribution_mean.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
         metric=media_effect_hat,
@@ -275,14 +277,14 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         channel_names=data_to_fit.media_names,
         bar_height="median",
     )
-    output_fname = os.path.join(results_dir, "media_contribution_by_channel_median.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_contribution_median.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
         metric=roi_hat, metric_name="ROI", channel_names=data_to_fit.media_names, bar_height="mean"
     )
-    output_fname = os.path.join(results_dir, "roi_by_channel_mean.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_roi_mean.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
         metric=roi_hat,
@@ -290,23 +292,26 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         channel_names=data_to_fit.media_names,
         bar_height="median",
     )
-    output_fname = os.path.join(results_dir, "roi_by_channel_median.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_roi_median.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
-        metric=cpa_hat, metric_name="CPA", channel_names=data_to_fit.media_names, bar_height="mean"
+        metric=cost_per_target_hat,
+        metric_name="cost per target",
+        channel_names=data_to_fit.media_names,
+        bar_height="mean",
     )
-    output_fname = os.path.join(results_dir, "cpa_by_channel_mean.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
-        metric=cpa_hat,
-        metric_name="CPA",
+        metric=cost_per_target_hat,
+        metric_name="cost per target",
         channel_names=data_to_fit.media_names,
         bar_height="median",
     )
-    output_fname = os.path.join(results_dir, "cpa_by_channel_median.png")
-    fig.savefig(output_fname)
+    output_fname = os.path.join(results_dir, "media_cost_per_target_median.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     _dump_baseline_breakdown(
         media_mix_model=mmm,
@@ -322,7 +327,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         channel_names=data_to_fit.media_names,
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
 
 
 def describe_mmm_prediction(mmm, data_to_fit, results_dir):
@@ -354,4 +359,4 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         media_mix_model=mmm,
     )
     output_fname = os.path.join(results_dir, "model_fit_out_of_sample.png")
-    fig.savefig(output_fname)
+    fig.savefig(output_fname, bbox_inches="tight")
