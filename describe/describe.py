@@ -51,35 +51,65 @@ def describe_config(output_dir, config, git_sha):
 
 
 def _dump_posterior_metrics(
-    input_data, media_effect_hat, roi_hat, cost_per_target_hat, results_dir
+    data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat, results_dir
 ):
     """
     write posterior metrics to a file
 
-    :param input_data: InputData instance
+    :param data_to_fit: DataToFit instance
     :param media_effect_hat: see LightweightMMM.get_posterior_metrics
     :param roi_hat: see LightweightMMM.get_posterior_metrics
     :param cost_per_target_hat: the inverse of ROI hat (cost per target)
     :param results_dir: results directory
     """
+    blended_media_effect_hat = media_effect_hat.sum(axis=1)
+    target_sum_train_unscaled = data_to_fit.target_scaler.inverse_transform(
+        data_to_fit.target_train_scaled
+    ).sum()
+    incremental_target_sum_hat = blended_media_effect_hat * target_sum_train_unscaled
+    # sum over all axes
+    total_cost_train_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
+        data_to_fit.media_costs_by_row_train_scaled
+    ).sum()
+    blended_roi_hat = incremental_target_sum_hat / total_cost_train_unscaled
+    blended_cost_per_target_hat = 1.0 / blended_roi_hat
+
     output_fname = os.path.join(results_dir, "media_performance_breakdown.txt")
     with open(output_fname, "w") as f:
-        for media_idx in range(input_data.media_data.shape[1]):
-            f.write(f"{input_data.media_names[media_idx]} Media Effect:\n")
+        f.write(f"Blended Media Effect:\n")
+        f.write(f"mean={np.mean(blended_media_effect_hat):,.6f}\n")
+        f.write(f"median={np.median(blended_media_effect_hat):,.6f}\n")
+        quantiles = np.quantile(blended_media_effect_hat, [0.05, 0.95])
+        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
+
+        f.write(f"Blended ROI:\n")
+        f.write(f"mean={np.mean(blended_roi_hat):,.6f}\n")
+        f.write(f"median={np.median(blended_roi_hat):,.6f}\n")
+        quantiles = np.quantile(blended_roi_hat, [0.05, 0.95])
+        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
+
+        f.write(f"Blended Cost Per Target:\n")
+        f.write(f"mean={np.mean(blended_cost_per_target_hat):,.6f}\n")
+        f.write(f"median={np.median(blended_cost_per_target_hat):,.6f}\n")
+        quantiles = np.quantile(blended_cost_per_target_hat, [0.05, 0.95])
+        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
+
+        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+            f.write(f"{data_to_fit.media_names[media_idx]} Media Effect:\n")
             f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.6f}\n")
             f.write(f"median={np.median(media_effect_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
-        for media_idx in range(input_data.media_data.shape[1]):
-            f.write(f"{input_data.media_names[media_idx]} ROI:\n")
+        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+            f.write(f"{data_to_fit.media_names[media_idx]} ROI:\n")
             f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.6f}\n")
             f.write(f"median={np.median(roi_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
 
-        for media_idx in range(input_data.media_data.shape[1]):
-            f.write(f"{input_data.media_names[media_idx]} cost per target:\n")
+        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+            f.write(f"{data_to_fit.media_names[media_idx]} Cost Per Target:\n")
             # we intentionally do not dump the mean cost per target, because the mean is highly influenced
             # by very low ROI outlier values.
             f.write(f"median={np.median(cost_per_target_hat[:, media_idx]):,.6f}\n")
@@ -256,7 +286,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     )
     cost_per_target_hat = 1.0 / roi_hat
     _dump_posterior_metrics(
-        input_data=input_data,
+        data_to_fit=data_to_fit,
         media_effect_hat=media_effect_hat,
         roi_hat=roi_hat,
         cost_per_target_hat=cost_per_target_hat,
