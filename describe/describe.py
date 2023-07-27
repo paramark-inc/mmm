@@ -80,7 +80,8 @@ def _dump_posterior_metrics(
 
         for media_idx in range(input_data.media_data.shape[1]):
             f.write(f"{input_data.media_names[media_idx]} cost per target:\n")
-            f.write(f"mean={np.mean(cost_per_target_hat[:, media_idx]):,.6f}\n")
+            # we intentionally do not dump the mean cost per target, because the mean is highly influenced
+            # by very low ROI outlier values.
             f.write(f"median={np.median(cost_per_target_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
@@ -295,14 +296,8 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     output_fname = os.path.join(results_dir, "media_roi_median.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=cost_per_target_hat,
-        metric_name="cost per target",
-        channel_names=data_to_fit.media_names,
-        bar_height="mean",
-    )
-    output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+    # we intentionally do not plot the mean cost per target, because the mean is highly influenced
+    # by very low ROI outlier values.
 
     fig = plot_bars_media_metrics(
         metric=cost_per_target_hat,
