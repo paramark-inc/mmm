@@ -62,16 +62,27 @@ def _dump_posterior_metrics(
     :param cost_per_target_hat: the inverse of ROI hat (cost per target)
     :param results_dir: results directory
     """
+    # blended_media_effect_hat => array with one dimension (sample_count) representing the overall
+    # media effect across the training period, as a percentage of the total target prediction.
     blended_media_effect_hat = media_effect_hat.sum(axis=1)
+    # target_sum_train_unscaled => scalar, unscaled sum of target values over the training period
     target_sum_train_unscaled = data_to_fit.target_scaler.inverse_transform(
         data_to_fit.target_train_scaled
     ).sum()
+    # incremental_target_sum_hat => array with one dimension (sample count) representing the
+    # unscaled total incremental target prediction over the training period
     incremental_target_sum_hat = blended_media_effect_hat * target_sum_train_unscaled
-    # sum over all axes
+    # total_cost_train_unscaled => scalar, unscaled sum of media costs over the training period
     total_cost_train_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
     ).sum()
+    # blended_roi_hat => array with one dimension (sample_count) representing the overall roi
+    # across the training period (total target metric prediction attributable to media spend /
+    # total media cost)
     blended_roi_hat = incremental_target_sum_hat / total_cost_train_unscaled
+    # blended cost per target => array with one dimension (sample_count) representing the overall
+    # cost per target metric prediction attributable to media spend (i.e. truly incremental
+    # acquisitions)
     blended_cost_per_target_hat = 1.0 / blended_roi_hat
 
     output_fname = os.path.join(results_dir, "media_performance_breakdown.txt")
@@ -110,8 +121,7 @@ def _dump_posterior_metrics(
 
         for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
             f.write(f"{data_to_fit.media_names[media_idx]} Cost Per Target:\n")
-            # we intentionally do not dump the mean cost per target, because the mean is highly influenced
-            # by very low ROI outlier values.
+            f.write(f"mean={np.mean(cost_per_target_hat[:, media_idx]):,.6f}\n")
             f.write(f"median={np.median(cost_per_target_hat[:, media_idx]):,.6f}\n")
             quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
             f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
@@ -326,8 +336,14 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     output_fname = os.path.join(results_dir, "media_roi_median.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    # we intentionally do not plot the mean cost per target, because the mean is highly influenced
-    # by very low ROI outlier values.
+    fig = plot_bars_media_metrics(
+        metric=cost_per_target_hat,
+        metric_name="cost per target",
+        channel_names=data_to_fit.media_names,
+        bar_height="mean",
+    )
+    output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
+    fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
         metric=cost_per_target_hat,
