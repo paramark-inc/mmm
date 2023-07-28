@@ -5,7 +5,7 @@ import pandas as pd
 import scipy.stats as spstats
 
 from ..constants import constants
-from ..model.model import InputData
+from ..data import InputData
 
 
 def print_outliers(input_data, output_dir, suffix):

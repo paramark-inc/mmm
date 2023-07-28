@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 from ...constants import constants
-from ...model.model import InputData
+from ...data import InputData
 from ...plot.plot import plot_all_metrics
 
 

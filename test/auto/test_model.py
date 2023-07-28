@@ -5,7 +5,7 @@ import unittest
 from datetime import date, timedelta
 
 from ...constants import constants
-from ...model.model import InputData, DataToFit
+from ...data import InputData, DataToFit
 
 
 class ModelTestCase(unittest.TestCase):
