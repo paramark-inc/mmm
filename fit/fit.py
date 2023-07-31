@@ -16,6 +16,7 @@ def fit_lightweight_mmm(
     weekday_seasonality=None,
     number_warmup=2000,
     number_samples=2000,
+    seed=None,
 ):
     """
     fit a lightweight mmm model to input_data
@@ -52,7 +53,7 @@ def fit_lightweight_mmm(
         "model_name": model_name,
         "degrees_seasonality": degrees_seasonality,
         "number_warmup": number_warmup,
-        "number_samples": number_warmup,
+        "number_samples": number_samples,
         "media_prior": data_to_fit.media_priors_scaled.tolist(),
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
@@ -73,7 +74,10 @@ def fit_lightweight_mmm(
 
     # manually generate a seed in the same way as lightweight mmm's
     # fit(), and store it for future reproducibility
-    fit_params["seed"] = get_time_seed()
+    if seed is not None:
+        fit_params["seed"] = seed
+    else:
+        fit_params["seed"] = get_time_seed()
 
     with open(os.path.join(results_dir, "fit_params.yaml"), "w") as output_file:
         yaml.dump(fit_params, output_file, default_flow_style=False)
