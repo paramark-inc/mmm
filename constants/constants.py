@@ -1,3 +1,8 @@
+KEY_GRANULARITY = "granularity"
+KEY_DATE_STRS = "date_strs"
+KEY_METRICS = "metrics"
+KEY_OBSERVATIONS = "observations"
+
 # time series granularity
 GRANULARITY_DAILY = "daily"
 GRANULARITY_WEEKLY = "weekly"

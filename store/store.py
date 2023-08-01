@@ -7,12 +7,12 @@ from ..impl.lightweight_mmm.lightweight_mmm.utils import load_model as lwmmm_loa
 from ..impl.lightweight_mmm.lightweight_mmm.utils import save_model as lwmmm_save_model
 
 
-def make_results_dir(data_dir, dirname_fixed):
+def make_results_dir(data_dir: str, dirname_fixed: str = "") -> str:
     """
     create a directory with a unique name for this mmm run
 
     :param data_dir: directory prefix
-    :param dirname_fixed: customer name suitable for including in a pathname
+    :param dirname_fixed: (optional) fixed path suffix, e.g. for a project name or customer name
     :return: directory name of form <data_dir>/results/<dirname_fixed>/<generated name>
     """
     now_date = datetime.now()
