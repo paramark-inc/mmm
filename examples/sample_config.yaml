@@ -1,0 +1,39 @@
+library: lightweight_mmm
+model_name: carryover
+
+number_warmup: 1000
+number_samples: 1000
+
+log_scale_target: false
+
+degrees_seasonality: 2
+weekday_seasonality: null
+
+raw_data_granularity: daily
+data_groupby: null
+
+data_rows:
+  total: 117
+  start_date: 2023-01-01
+  end_date: 2023-04-27
+
+# ignore_cols:
+#   - "Unwanted Column"
+
+target_col: kpi
+
+extra_features_cols:
+  - extra_feature_1
+
+media:
+  - display_name: Ad Platform 1
+    impressions_col: media_1_impressions
+    spend_col: media_1_cost
+
+  - display_name: Ad Platform 2
+    impressions_col: media_2_impressions
+    spend_col: media_2_cost
+
+  - display_name: Ad Platform 3
+    impressions_col: media_3_impressions
+    spend_col: media_3_cost
