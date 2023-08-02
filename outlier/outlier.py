@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import scipy.stats as spstats
 
-from ..constants import constants
-from ..data import InputData
+from mmm.constants import constants
+from mmm.data import InputData
 
 
 def print_outliers(input_data, output_dir, suffix):

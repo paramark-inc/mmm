@@ -2,7 +2,7 @@ import numpy as np
 import os
 import pandas as pd
 
-from ..constants import constants
+from mmm.constants import constants
 
 
 class InputData:

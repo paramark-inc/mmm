@@ -4,8 +4,8 @@ import unittest
 
 from datetime import date, timedelta
 
-from ...constants import constants
-from ...data import InputData, DataToFit
+from mmm.constants import constants
+from mmm.data import InputData, DataToFit
 
 
 class ModelTestCase(unittest.TestCase):

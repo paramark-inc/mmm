@@ -1,9 +1,9 @@
 import click
 import numpy as np
 
-from ...constants import constants
-from ...data import InputData
-from ...outlier.outlier import print_outliers
+from mmm.constants import constants
+from mmm.data import InputData
+from mmm.outlier.outlier import print_outliers
 
 
 def test_print_outliers(output_dir):

@@ -2,9 +2,9 @@ import click
 import numpy as np
 import random
 
-from ...constants import constants
-from ...data import InputData
-from ...plot.plot import plot_all_metrics
+from mmm.constants import constants
+from mmm.data import InputData
+from mmm.plot.plot import plot_all_metrics
 
 
 def generate_rand_metric_values(num_observations):
