@@ -2,7 +2,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from mmm.impl.lightweight_mmm.lightweight_mmm import preprocessing
+from impl.lightweight_mmm.lightweight_mmm import preprocessing
 
 
 class DataToFit:

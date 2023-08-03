@@ -1,18 +1,19 @@
-from data import DataToFit, InputData
-from describe.describe import (
+from .config import git_sha, load_config
+
+from mmm.data import DataToFit, InputData
+from mmm.describe.describe import (
     describe_input_data,
     describe_config,
     describe_mmm_training,
     describe_mmm_prediction,
 )
-from mmm.driver.config import git_sha, load_config
 from mmm.fit.fit import fit_lightweight_mmm
 from mmm.parser.csv import parse_csv_generic
 from mmm.store.store import make_results_dir, load_model, save_model
 from mmm.transform.transform import transform_input_generic
 
 
-class MMMDriver:
+class MMMBaseDriver:
     def init_output(self, data_dir: str = ".") -> str:
         return make_results_dir(data_dir=data_dir)
 

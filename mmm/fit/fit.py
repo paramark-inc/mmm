@@ -1,5 +1,5 @@
-from mmm.impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
-from mmm.impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
+from impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
+from impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from mmm.constants import constants
 

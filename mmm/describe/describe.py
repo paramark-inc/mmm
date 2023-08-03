@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import pandas as pd
 import os
 
-from mmm.impl.lightweight_mmm.lightweight_mmm.plot import (
+from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
     plot_media_baseline_contribution_area_plot,
     plot_media_channel_posteriors,
@@ -14,7 +14,7 @@ from mmm.impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_response_curves,
 )
 
-from mmm.impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
+from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
 
 from mmm.constants import constants
 from mmm.outlier.outlier import print_outliers
