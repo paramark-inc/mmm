@@ -16,10 +16,12 @@ def parse_csv_generic(data_fname: str, config: dict):
         }
     """
     data_df = pd.read_csv(data_fname, index_col="date")
-    total_rows_expected = config["data_rows"]["total"]
-    assert (
-        total_rows_expected == data_df.shape[0]
-    ), f"lhs={total_rows_expected}, rhs={data_df.shape[0]}"
+
+    if "total" in config.get("data_rows", {}):
+        total_rows_expected = config["data_rows"]["total"]
+        assert (
+            total_rows_expected == data_df.shape[0]
+        ), f"lhs={total_rows_expected}, rhs={data_df.shape[0]}"
 
     if "start_date" in config["data_rows"] and "end_date" in config["data_rows"]:
         start = config["data_rows"]["start_date"].isoformat()

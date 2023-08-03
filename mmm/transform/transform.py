@@ -72,7 +72,7 @@ def transform_input_generic(data_dict: dict, config: dict):
         impressions_col = media_config.get("impressions_col")
         spend_col = media_config.get("spend_col")
 
-        _copy_metric_values_to_media_data(metric_data[spend_col], media_data, i)
+        _copy_metric_values_to_media_data(metric_data[impressions_col], media_data, i)
 
         _copy_cost_values_to_media_costs(
             metric_data[impressions_col],
