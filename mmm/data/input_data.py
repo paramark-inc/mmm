@@ -50,7 +50,9 @@ class InputData:
         # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
         # constraint on all values.
         for idx, prior in np.ndenumerate(media_priors):
-            assert prior > 0.0, f"Media channel {media_names[idx]} has zero prior"
+            assert (
+                prior > 0.0
+            ), f"Media channel {media_names[idx[0]]} has zero prior. Make sure this channel's cost column has non-zero and non-NaN values."
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
