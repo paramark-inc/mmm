@@ -1,6 +1,11 @@
 import click
 import numpy as np
+import os
+import sys
 import random
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "impl", "lightweight_mmm"))
 
 from mmm.constants import constants
 from mmm.data import InputData

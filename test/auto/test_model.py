@@ -1,8 +1,13 @@
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
+import os
+import sys
 import unittest
 
 from datetime import date, timedelta
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "impl", "lightweight_mmm"))
 
 from mmm.constants import constants
 from mmm.data import InputData, DataToFit

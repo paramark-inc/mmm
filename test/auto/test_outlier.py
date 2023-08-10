@@ -1,11 +1,15 @@
 import numpy as np
 from numpy.testing import assert_array_almost_equal
+import os
+import sys
 import unittest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "impl", "lightweight_mmm"))
 
 from mmm.constants import constants
 from mmm.data import InputData
 from mmm.outlier.outlier import remove_outliers_from_input
-
 
 class OutlierTestCase(unittest.TestCase):
     # noinspection PyMethodMayBeStatic
