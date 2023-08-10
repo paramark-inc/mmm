@@ -1,30 +1,67 @@
+################################
+# Lightweight MMM options
+################################
+
+# Library to use: at present only lightweight_mmm is supported
 library: lightweight_mmm
+
+# "model name" is the lightweight_mmm option for how to compute adstock
+# (i.e. how much effect an ad has over time, as someone's memory fades)
+# Values: carryover, adstock, hill_adstock
 model_name: carryover
 
+# These lightweight_mmm options determine how many samples to take from the
+# Markov chain Monte Carlo process; higher values mean slower runtime.
 number_warmup: 1000
 number_samples: 1000
 
-log_scale_target: false
-
+# These lightweight_mmm options specify how to handle seasonality: the expected
+# number of degrees of freedom, and whether to separately model intra-week variation.
 degrees_seasonality: 2
 weekday_seasonality: null
 
-raw_data_granularity: daily
-data_groupby: null
+################################
+# Data handling options
+################################
 
+# Enable log scaling. For datasets where the target metric varies by many
+# orders of magnitude, it may improve performance to log-scale the target
+# metric before trying to fit the model (optional, defaults to false).
+log_scale_target: false
+
+# Frequency of the input data (required)
+# Values: daily, weekly
+raw_data_granularity: daily
+
+# Specify the expected total number of rows in the CSV input (optional),
+# and the range of dates to use from the input data (required)
 data_rows:
   total: 117
   start_date: 2023-01-01
   end_date: 2023-04-27
 
+################################
+# Column definitions
+################################
+
+# Column names from the input to be ignored (optional).
+# All columns in the input data should be listed somewhere in this file,
+# so use this field when testing out which columns to include.
 # ignore_cols:
 #   - "Unwanted Column"
 
+# Column name for the target or output metric (e.g. number of leads, sales volume)
+# that we want to increase with marketing spend (required).
 target_col: kpi
 
+# Column names for "extra features", i.e. factors external to
+# marketing that influence the target metric (optional).
 extra_features_cols:
   - extra_feature_1
 
+# Required: each block under "media" represents an advertising channel,
+# defined by a display name (used in charts), a column name for
+# impressions data, and a column name for cost data.
 media:
   - display_name: Ad Platform 1
     impressions_col: media_1_impressions
