@@ -15,7 +15,11 @@ def parse_csv_generic(data_fname: str, config: dict):
             KEY_METRICS: { metric_name: [ metric values ], ... }
         }
     """
-    data_df = pd.read_csv(data_fname, index_col="date")
+    # allow config option for name of date column;
+    # if not provided, use "date" (case sensitive)
+    index_col = config.get("date_col", "date")
+
+    data_df = pd.read_csv(data_fname, index_col=index_col)
 
     if "total" in config.get("data_rows", {}):
         total_rows_expected = config["data_rows"]["total"]

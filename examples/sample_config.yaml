@@ -50,6 +50,11 @@ data_rows:
 # ignore_cols:
 #   - "Unwanted Column"
 
+# Column name for the date index of each row (optional,
+# case-sensitive; defaults to lowercase "date").
+# Values in this column must be ISO 8601 format (YYYY-MM-DD).
+# date_col: date
+
 # Column name for the target or output metric (e.g. number of leads, sales volume)
 # that we want to increase with marketing spend (required).
 target_col: kpi
