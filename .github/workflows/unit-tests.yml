@@ -1,0 +1,21 @@
+name: Unit tests
+on:
+  - push
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    container:
+      image: dabosq/mmm-base-python:noavx-latest
+    steps:
+      - name: Setup
+        run: pip3 install pytest
+
+      - name: Clone code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Python unit tests
+        run: pytest test/auto/
+
