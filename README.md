@@ -47,10 +47,8 @@ Once your dataset is ready, your MMM workflow will consist of creating/editing c
 * **Check your data** 
   * See `examples/jupyter/1-validate.ipynb` and `examples/jupyter/2-describe.ipynb` for checks and visualizations you can run to understand and improve data hygiene.
 * **Write a config file** specifying your data format and hyperparameters for the model.
-  * In the `data_rows` section, define a `start_date` and `end_date`. This can simply be the first and last dates in your dataset, but you may find that you need to exclude parts of the time range (e.g. if your early data is incomplete).
-  * For each of your advertising channels, add an entry in the `media` section, with a display name (used in charts) and the column names for impressions and for spend.
-  * Every column in the dataset should be mentioned in the config file; if you don't want to use a column in your model, add it to `ignore_cols`.
-  * The other configuration options change Lightweight MMM parameters -- to get started, just copy the defaults from `sample-config.yaml`.
+  * See `examples/sample_config.yaml` for an example.
+  * See `docs/config.md` for documentation on config parameters.
 * **Run the code.**
   * `python3 run.py` is the main entrypoint.
   * Use `-f` to pass the path to your CSV data file.

@@ -24,9 +24,7 @@ weekday_seasonality: null
 # Data handling options
 ################################
 
-# Enable log scaling. For datasets where the target metric varies by many
-# orders of magnitude, it may improve performance to log-scale the target
-# metric before trying to fit the model (optional, defaults to false).
+# Experimental feature.  Leave as false for now.
 log_scale_target: false
 
 # Frequency of the input data (required)
