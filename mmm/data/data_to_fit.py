@@ -2,6 +2,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from mmm.constants.constants import GRANULARITY_WEEKLY
+
 from impl.lightweight_mmm.lightweight_mmm import preprocessing
 
 
@@ -193,7 +195,10 @@ class DataToFit:
         # TODO push conversion to datetime upstream so that it is common across all data sets
         per_observation_df = pd.DataFrame(
             data=observation_data_by_column_name,
-            index=pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
+            index=pd.DatetimeIndex(
+                pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
+                freq="W" if self.time_granularity == GRANULARITY_WEEKLY else "D",
+            ),
             dtype=np.float64,
             copy=True,
         )
