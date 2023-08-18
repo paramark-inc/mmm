@@ -2,7 +2,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from mmm.constants.constants import GRANULARITY_WEEKLY
+from mmm.constants import constants
 
 from impl.lightweight_mmm.lightweight_mmm import preprocessing
 
@@ -155,7 +155,7 @@ class DataToFit:
         media_data_unscaled = self.media_scaler.inverse_transform(media_data_scaled)
         n_media_channels = media_data_scaled.shape[1]
         for media_idx in range(n_media_channels):
-            col_name = f"{self.media_names[media_idx]} volume"
+            col_name = f"{self.media_names[media_idx]} {constants.DATA_FRAME_IMPRESSIONS_SUFFIX}"
             media_data_touse = media_data_unscaled if unscaled else media_data_scaled
             observation_data_by_column_name[col_name] = media_data_touse[:, media_idx]
 
@@ -166,7 +166,7 @@ class DataToFit:
             media_costs_by_row_scaled
         )
         for media_idx in range(n_media_channels):
-            col_name = f"{self.media_names[media_idx]} cost"
+            col_name = f"{self.media_names[media_idx]} {constants.DATA_FRAME_COST_SUFFIX}"
             media_costs_by_row_touse = (
                 media_costs_by_row_unscaled if unscaled else media_costs_by_row_scaled
             )
@@ -197,7 +197,7 @@ class DataToFit:
             data=observation_data_by_column_name,
             index=pd.DatetimeIndex(
                 pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
-                freq="W" if self.time_granularity == GRANULARITY_WEEKLY else "D",
+                freq="W" if self.time_granularity == constants.GRANULARITY_WEEKLY else "D",
             ),
             dtype=np.float64,
             copy=True,
