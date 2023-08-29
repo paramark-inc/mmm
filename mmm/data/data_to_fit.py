@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import jax.numpy as jnp
 import pandas as pd
 
 from mmm.constants import constants
@@ -22,7 +23,10 @@ class DataToFit:
         :param x: array of values
         :return: sum / count_of_positive_values
         """
-        return x.sum() / (x > 0).sum()
+        # special case when all rows are zero so that we don't divide by zero.  We could use
+        # any value here, since the numerators will all be zero, so we use 1.
+        n_elements_gt_zero = (x > 0).sum()
+        return jnp.where(n_elements_gt_zero > 0, x.sum() / n_elements_gt_zero, 1)
 
     @staticmethod
     def from_input_data(input_data):
@@ -47,8 +51,8 @@ class DataToFit:
         extra_features_train = input_data.extra_features_data[:split_point, :]
         extra_features_test = input_data.extra_features_data[split_point:, :]
 
-        # Scale data (ignoring the zeroes in the media data).  Call fit_transform only the first time because only one
-        # scaling constant is stored in the scaler.
+        # Scale data (ignoring the zeroes in the media data).  Call fit only the first time because
+        # only one scaling constant is stored in the scaler.
         media_scaler = preprocessing.CustomScaler(
             divide_operation=DataToFit._robust_scaling_divide_operation
         )
@@ -58,20 +62,33 @@ class DataToFit:
         target_scaler = preprocessing.CustomScaler(
             divide_operation=DataToFit._robust_scaling_divide_operation
         )
-
-        # scale cost up by N since fit() will divide it by number of time periods
         media_cost_scaler = preprocessing.CustomScaler(
             divide_operation=DataToFit._robust_scaling_divide_operation
         )
 
-        media_data_train_scaled = media_scaler.fit_transform(media_data_train)
+        # we fit based on the full data set to get a scaler that will work well for both train and
+        # test rather than working well for only one or the other.  Consider the case where the
+        # values in the train set are all zero, but the values in the test set are very large.  If
+        # we fit based on the train we would generate a divide_by value of 1 which would not work
+        # well for the data in the test set.
+        media_scaler.fit(input_data.media_data)
+        extra_features_scaler.fit(input_data.extra_features_data)
+        target_scaler.fit(input_data.target_data)
+
+        # note that we use media_priors to fit the scaler, and then apply the scaling to media_costs
+        # and media_costs_by_row in addition to media_priors.  Ordinarily it would be better to have
+        # a separate scaler for each, but since only media_priors is used for fitting the MMM model,
+        # this achieves the same result.
+        media_cost_scaler.fit(input_data.media_priors)
+
+        media_data_train_scaled = media_scaler.transform(media_data_train)
         media_data_test_scaled = media_scaler.transform(media_data_test)
-        extra_features_train_scaled = extra_features_scaler.fit_transform(extra_features_train)
+        extra_features_train_scaled = extra_features_scaler.transform(extra_features_train)
         extra_features_test_scaled = extra_features_scaler.transform(extra_features_test)
-        target_train_scaled = target_scaler.fit_transform(target_train)
+        target_train_scaled = target_scaler.transform(target_train)
         target_test_scaled = target_scaler.transform(target_test)
 
-        media_priors_scaled = media_cost_scaler.fit_transform(input_data.media_priors)
+        media_priors_scaled = media_cost_scaler.transform(input_data.media_priors)
         media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
         media_costs_by_row_train_scaled = media_cost_scaler.transform(media_costs_by_row_train)
         media_costs_by_row_test_scaled = media_cost_scaler.transform(media_costs_by_row_test)
