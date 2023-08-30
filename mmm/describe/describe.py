@@ -12,6 +12,7 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_out_of_sample_model_fit,
     plot_prior_and_posterior,
     plot_response_curves,
+    create_media_baseline_contribution_df,
 )
 
 from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
@@ -165,19 +166,19 @@ def _dump_baseline_breakdown(
 
     mmm = media_mix_model
     num_observations = data_to_fit.media_data_train_scaled.shape[0]
-    intercept = jnp.mean(jnp.squeeze(mmm.trace["intercept"]))
-    coef_trend = jnp.mean(jnp.squeeze(mmm.trace["coef_trend"]))
-    expo_trend = jnp.mean(mmm.trace["expo_trend"])
+    intercept = jnp.median(jnp.squeeze(mmm.trace["intercept"]))
+    coef_trend = jnp.median(jnp.squeeze(mmm.trace["coef_trend"]))
+    expo_trend = jnp.median(mmm.trace["expo_trend"])
     if data_to_fit.extra_features_train_scaled.shape[1]:
-        coef_extra_features = jnp.mean(mmm.trace["coef_extra_features"], axis=0)
+        coef_extra_features = jnp.median(mmm.trace["coef_extra_features"], axis=0)
     else:
         coef_extra_features = None
-    gamma_seasonality = jnp.mean(mmm.trace["gamma_seasonality"], axis=0)
+    gamma_seasonality = jnp.median(mmm.trace["gamma_seasonality"], axis=0)
 
     columns = ["intercept", "trend", "seasonality"]
 
     if input_data.time_granularity == constants.GRANULARITY_DAILY:
-        weekday = jnp.mean(mmm.trace["weekday"], axis=0)
+        weekday = jnp.median(mmm.trace["weekday"], axis=0)
         columns.append("weekday")
     else:
         weekday = None
@@ -215,7 +216,21 @@ def _dump_baseline_breakdown(
     data = data_to_fit.target_scaler.inverse_transform(data)
 
     baseline_breakdown_df = pd.DataFrame(data=data, columns=columns)
-    baseline_breakdown_df["baseline"] = baseline_breakdown_df.sum(axis=1)
+    baseline_breakdown_df["sum"] = baseline_breakdown_df.sum(axis=1)
+
+    # because the total baseline computed here in the 'sum' column is a less accurate estimate than
+    # the one computed by create_media_baseline_contribution_df() for the weekly media and baseline
+    # chart [1], we call the latter function here and include its estimate of the baseline
+    # contribution in the results.
+    #
+    # [1] - this is because this function uses the median value of each model parameter, while
+    # create_media_baseline_contribution_df allows the entire distribution to influence the result.
+    plot_df = create_media_baseline_contribution_df(
+        media_mix_model=media_mix_model,
+        target_scaler=data_to_fit.target_scaler,
+        channel_names=data_to_fit.media_names,
+    )
+    baseline_breakdown_df["model_baseline"] = plot_df["baseline contribution"]
 
     with open(os.path.join(results_dir, "baseline_breakdown.txt"), "w") as f:
         f.write("Mean value by component:\n\n")
@@ -229,7 +244,7 @@ def _dump_baseline_breakdown(
             )
         if weekday is not None:
             f.write(f"weekday={baseline_breakdown_df['weekday'].mean():,.4f}\n")
-        f.write(f"baseline={baseline_breakdown_df['baseline'].mean():,.4f}\n")
+        f.write(f"sum={baseline_breakdown_df['sum'].mean():,.4f}\n")
 
         f.write("\n")
         f.write("Row by Row breakdown:\n\n")
