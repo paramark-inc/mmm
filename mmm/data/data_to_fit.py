@@ -1,11 +1,10 @@
 import math
 import numpy as np
-import jax.numpy as jnp
 import pandas as pd
 
 from mmm.constants import constants
 
-from impl.lightweight_mmm.lightweight_mmm import preprocessing
+from mmm.data.serializable_scaler import SerializableScaler
 
 
 class DataToFit:
@@ -14,19 +13,6 @@ class DataToFit:
     * split into train and test data set
     * scaled to be smaller values for better accuracy from the Bayesian model
     """
-
-    @staticmethod
-    def _robust_scaling_divide_operation(x):
-        """
-        Scaling divide operation that is robust to zero values (unlike jnp.mean).
-
-        :param x: array of values
-        :return: sum / count_of_positive_values
-        """
-        # special case when all rows are zero so that we don't divide by zero.  We could use
-        # any value here, since the numerators will all be zero, so we use 1.
-        n_elements_gt_zero = (x > 0).sum()
-        return jnp.where(n_elements_gt_zero > 0, x.sum() / n_elements_gt_zero, 1)
 
     @staticmethod
     def from_input_data(input_data):
@@ -53,18 +39,10 @@ class DataToFit:
 
         # Scale data (ignoring the zeroes in the media data).  Call fit only the first time because
         # only one scaling constant is stored in the scaler.
-        media_scaler = preprocessing.CustomScaler(
-            divide_operation=DataToFit._robust_scaling_divide_operation
-        )
-        extra_features_scaler = preprocessing.CustomScaler(
-            divide_operation=DataToFit._robust_scaling_divide_operation
-        )
-        target_scaler = preprocessing.CustomScaler(
-            divide_operation=DataToFit._robust_scaling_divide_operation
-        )
-        media_cost_scaler = preprocessing.CustomScaler(
-            divide_operation=DataToFit._robust_scaling_divide_operation
-        )
+        media_scaler = SerializableScaler()
+        extra_features_scaler = SerializableScaler()
+        target_scaler = SerializableScaler()
+        media_cost_scaler = SerializableScaler()
 
         # we fit based on the full data set to get a scaler that will work well for both train and
         # test rather than working well for only one or the other.  Consider the case where the
