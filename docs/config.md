@@ -2,11 +2,12 @@
 
 To run MMM, you'll need to create a `yaml` config file with the following parameters:
 * `library`: at present only `lightweight_mmm` is supported.
-* `model_name`: specifies the underlying mathematical formula used by the model.  One of `adstock`, `hill_adstock`, and `carryover`. 
+* `model_name`: specifies the underlying mathematical formula used by the model.  One of `adstock`, `hill_adstock`, and `carryover`.
 * `number_warmup`: number of samples taken during the warm up phase.  These samples will be discarded.  We recommend a value of at least 1000.
 * `number_samples`: number of samples taken during the modeling phase.  These samples will be used by the model.  We recommend a value of at least 1000.
 * `degrees_seasonality`: integer number of degrees of seasonality.  Larger numbers indicate more nested seasonality effect.  We recommend starting with 1, 2, or 3.
 * `weekday_seasonality`: controls how the model handles day of week changes.  `null` to automatically derive the value, `true` to generate day of week coefficients for daily data, `false` to omit day of week coefficients.
+* `seed`: fixed seed for random numbers in the MCMC process. When this isn't set, a new seed is generated each time, so model coefficients will be slightly different even for the same data. Note that JAX [uses seeds differently to numpy](https://jax.readthedocs.io/en/latest/jax-101/05-random-numbers.html).
 * `log_scale_target`: experimental feature.  Should be set to `false`.
 * `raw_data_granularity`: `daily` if your CSV has one row per day; `weekly` if it has one row per week.
 * `data_rows`: specify a `start_date` and `end_date` to control the time range fed into the model.

@@ -68,6 +68,7 @@ class MMMBaseDriver:
                 weekday_seasonality=config["weekday_seasonality"],
                 number_warmup=config["number_warmup"],
                 number_samples=config["number_samples"],
+                seed=config.get("seed"),
             )
 
         return data_to_fit, model

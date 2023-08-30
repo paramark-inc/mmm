@@ -20,6 +20,11 @@ number_samples: 1000
 degrees_seasonality: 2
 weekday_seasonality: null
 
+# Fixed seed for MCMC process: set this if subsequent runs need to
+# have exactly the same results. If not set, this defaults to a
+# seed generated with get_time_seed() in lightweight_mmm.
+# seed: 1
+
 ################################
 # Data handling options
 ################################
