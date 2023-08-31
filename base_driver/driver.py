@@ -12,6 +12,8 @@ from mmm.parser.csv import parse_csv_generic
 from mmm.store.store import make_results_dir, load_model, save_model
 from mmm.transform.transform import transform_input_generic
 
+from impl.lightweight_mmm.lightweight_mmm.lightweight_mmm import LightweightMMM
+
 
 class MMMBaseDriver:
     def init_output(self, data_dir: str = ".") -> str:
@@ -50,7 +52,7 @@ class MMMBaseDriver:
         input_data_processed: InputData,
         config: dict,
         model_filename: str = None,
-    ):
+    ) -> (DataToFit, LightweightMMM):
         data_to_fit = DataToFit.from_input_data(input_data=input_data_processed)
 
         model_name = config["model_name"]
@@ -76,7 +78,7 @@ class MMMBaseDriver:
     def visualize(
         self,
         results_dir: str,
-        model,
+        model: LightweightMMM,
         input_data_processed: InputData,
         data_to_fit: DataToFit,
         config: dict,
@@ -90,7 +92,8 @@ class MMMBaseDriver:
         )
         describe_mmm_prediction(mmm=model, data_to_fit=data_to_fit, results_dir=results_dir)
 
-    def save_model(self, results_dir: str, model) -> None:
+    def save_model(self, results_dir: str, model: LightweightMMM, data_to_fit: DataToFit) -> None:
+        data_to_fit.dump(results_dir=results_dir)
         save_model(mmm=model, results_dir=results_dir)
 
     def main(self, config_filename, input_filename):
@@ -105,4 +108,4 @@ class MMMBaseDriver:
         )
         data_to_fit, model = self.fit(results_dir, input_data_processed, config)
         self.visualize(results_dir, model, input_data_processed, data_to_fit, config)
-        self.save_model(results_dir, model)
+        self.save_model(results_dir, model, data_to_fit)

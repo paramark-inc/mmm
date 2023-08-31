@@ -40,6 +40,9 @@ class SerializableScaler(CustomScaler):
         if isinstance(self.multiply_by, jaxlib.xla_extension.ArrayImpl):
             # tolist() works for all jax "arrays" even if they are zero-dimension (i.e. scalar)
             multiply_by = self.multiply_by.tolist()
+        elif isinstance(self.multiply_by, list):
+            # for scalers created via from_dict, multiply/divide might be a standard list (not JAX)
+            multiply_by = self.multiply_by
         else:
             # this is likely a numpy.float64
             multiply_by = float(self.multiply_by)
@@ -47,6 +50,8 @@ class SerializableScaler(CustomScaler):
         divide_by = None
         if isinstance(self.divide_by, jaxlib.xla_extension.ArrayImpl):
             divide_by = self.divide_by.tolist()
+        elif isinstance(self.divide_by, list):
+            divide_by = self.divide_by
         else:
             divide_by = float(self.divide_by)
 

@@ -1,10 +1,16 @@
+import gzip
 import math
+import msgpack
+import msgpack_numpy
 import numpy as np
+import os
 import pandas as pd
 
 from mmm.constants import constants
 
 from mmm.data.serializable_scaler import SerializableScaler
+
+msgpack_numpy.patch()
 
 
 class DataToFit:
@@ -94,6 +100,37 @@ class DataToFit:
             target_name=input_data.target_name,
         )
 
+    @staticmethod
+    def from_dict(input_dict):
+        """
+        Recreate a DataToFit object from a dictionary created by to_dict().
+
+        Scaler objects have to be manually recreated; other dict keys can
+        be passed directly to the constructor.
+        """
+        scalers = {}
+        for name, scaler_dict in input_dict["scalers"].items():
+            scaler = SerializableScaler()
+            scaler.from_dict(scaler_dict)
+            scalers[name] = scaler
+
+        return DataToFit(
+            **scalers,
+            **input_dict["data"],
+            **input_dict["display"],
+            **input_dict["config"],
+        )
+
+    @staticmethod
+    def from_file(input_file):
+        if input_file.endswith(".gz"):
+            with gzip.open(input_file) as f:
+                input_dict = msgpack.load(f)
+        else:
+            with open(input_file) as f:
+                input_dict = msgpack.load(f)
+        return DataToFit.from_dict(input_dict)
+
     def __init__(
         self,
         date_strs,
@@ -137,6 +174,47 @@ class DataToFit:
         self.target_is_log_scale = target_is_log_scale
         self.target_scaler = target_scaler
         self.target_name = target_name
+
+    def to_dict(self):
+        return {
+            "data": {
+                # each of these attributes are JAX arrays, so convert them
+                # to standard numpy before outputting (for msgpack_numpy)
+                name: np.array(getattr(self, name))
+                for name in [
+                    "media_data_train_scaled",
+                    "media_data_test_scaled",
+                    "media_costs_scaled",
+                    "media_priors_scaled",
+                    "media_costs_by_row_train_scaled",
+                    "media_costs_by_row_test_scaled",
+                    "extra_features_train_scaled",
+                    "extra_features_test_scaled",
+                    "target_train_scaled",
+                    "target_test_scaled",
+                ]
+            },
+            "display": {
+                "date_strs": self.date_strs,
+                "media_names": self.media_names,
+                "extra_features_names": self.extra_features_names,
+            },
+            "scalers": {
+                "media_scaler": self.media_scaler.to_dict(),
+                "media_costs_scaler": self.media_costs_scaler.to_dict(),
+                "extra_features_scaler": self.extra_features_scaler.to_dict(),
+                "target_scaler": self.target_scaler.to_dict(),
+            },
+            "config": {
+                "target_name": self.target_name,
+                "target_is_log_scale": self.target_is_log_scale,
+                "time_granularity": self.time_granularity,
+            },
+        }
+
+    def dump(self, results_dir):
+        with gzip.open(os.path.join(results_dir, f"data_to_fit.gz"), "wb") as f:
+            msgpack.dump(self.to_dict(), f)
 
     def to_data_frame(self, unscaled=False):
         """
