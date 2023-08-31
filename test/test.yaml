@@ -1,0 +1,34 @@
+library: lightweight_mmm
+model_name: carryover
+
+number_warmup: 10
+number_samples: 10
+
+seed: 1
+
+degrees_seasonality: 1
+weekday_seasonality: null
+
+log_scale_target: false
+
+raw_data_granularity: daily
+
+data_rows:
+  start_date: 2023-01-01
+  end_date: 2023-01-10
+
+ignore_cols:
+  - IgnoreCol
+
+date_col: Date
+
+target_col: Target
+
+media:
+  - display_name: Channel 1
+    impressions_col: Impressions1
+    spend_col: Spend1
+
+  - display_name: Channel 2
+    impressions_col: Impressions2
+    spend_col: Spend2
