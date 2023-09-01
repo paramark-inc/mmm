@@ -36,6 +36,14 @@ class DataToFitTest(unittest.TestCase):
             output["scalers"]["target_scaler"], {"multiply_by": 1.0, "divide_by": 55.0}
         )
 
+        # check to make sure we haven't forgotten any attributes in to_dict();
+        # assumes that all the keys of the dict (one level down) are also all
+        # the properties of the object (which we count via a hack on __dict__)
+        dict_count = 0
+        for section in output.values():
+            dict_count += len(section)
+        self.assertEqual(len(data_to_fit.__dict__), dict_count)
+
     def test_data_to_fit_from_gz_file(self):
         filename = os.path.join(os.path.dirname(__file__), "..", "test_data_to_fit.gz")
         data_to_fit = DataToFit.from_file(filename)
