@@ -11,6 +11,7 @@ To run MMM, you'll need to create a `yaml` config file with the following parame
 * `log_scale_target`: experimental feature.  Should be set to `false`.
 * `raw_data_granularity`: `daily` if your CSV has one row per day; `weekly` if it has one row per week.
 * `data_rows`: specify a `start_date` and `end_date` to control the time range fed into the model.
+* `train_test_ratio`: ratio of data rows used for model training versus testing. Defaults to 0.9 (90% train, 10% test).
 * `ignore_cols`: (optional) list of columns from your CSV that should be ignored.
 * `date_col`: (optional) name of the date column in your CSV.  Dates should be in ISO 8601 format (YYYY-MM-DD).  Defaults to "`date`".
 * `target_col`: name of the column with the target (output) metric.

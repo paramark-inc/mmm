@@ -7,7 +7,7 @@ import os
 import pandas as pd
 
 from mmm.constants import constants
-
+from mmm.data.input_data import InputData
 from mmm.data.serializable_scaler import SerializableScaler
 
 msgpack_numpy.patch()
@@ -21,7 +21,7 @@ class DataToFit:
     """
 
     @staticmethod
-    def from_input_data(input_data):
+    def from_input_data(input_data: InputData, config: dict):
         """
         Generate a DataToFit instance from an InputData instance
         :param input_data: InputData instance
@@ -29,19 +29,26 @@ class DataToFit:
         """
         data_size = input_data.media_data.shape[0]
 
-        split_point = math.ceil(data_size * 0.9)
-        # split_point = math.ceil(data_size * 0.75)
-        # split_point = math.ceil(data_size * 0.66)
-        # split_point = math.ceil(data_size * 0.5)
-        media_data_train = input_data.media_data[:split_point, :]
-        media_data_test = input_data.media_data[split_point:, :]
-        media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :]
-        media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :]
+        split_ratio = config.get("train_test_ratio", 0.9)
+        split_point = math.ceil(data_size * split_ratio)
 
-        target_train = input_data.target_data[:split_point]
-        target_test = input_data.target_data[split_point:]
+        media_data_train = input_data.media_data[:split_point, :]
+        media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :]
         extra_features_train = input_data.extra_features_data[:split_point, :]
-        extra_features_test = input_data.extra_features_data[split_point:, :]
+        target_train = input_data.target_data[:split_point]
+
+        if split_point < data_size:
+            has_test_dataset = True
+            media_data_test = input_data.media_data[split_point:, :]
+            media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :]
+            extra_features_test = input_data.extra_features_data[split_point:, :]
+            target_test = input_data.target_data[split_point:]
+        else:
+            has_test_dataset = False
+            media_data_test = np.array([])
+            media_costs_by_row_test = np.array([])
+            extra_features_test = np.array([])
+            target_test = np.array([])
 
         # Scale data (ignoring the zeroes in the media data).  Call fit only the first time because
         # only one scaling constant is stored in the scaler.
@@ -66,11 +73,17 @@ class DataToFit:
         media_cost_scaler.fit(input_data.media_priors)
 
         media_data_train_scaled = media_scaler.transform(media_data_train)
-        media_data_test_scaled = media_scaler.transform(media_data_test)
         extra_features_train_scaled = extra_features_scaler.transform(extra_features_train)
-        extra_features_test_scaled = extra_features_scaler.transform(extra_features_test)
         target_train_scaled = target_scaler.transform(target_train)
-        target_test_scaled = target_scaler.transform(target_test)
+
+        if has_test_dataset:
+            media_data_test_scaled = media_scaler.transform(media_data_test)
+            extra_features_test_scaled = extra_features_scaler.transform(extra_features_test)
+            target_test_scaled = target_scaler.transform(target_test)
+        else:
+            media_data_test_scaled = np.array([])
+            extra_features_test_scaled = np.array([])
+            target_test_scaled = np.array([])
 
         media_priors_scaled = media_cost_scaler.transform(input_data.media_priors)
         media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
@@ -80,6 +93,7 @@ class DataToFit:
         return DataToFit(
             date_strs=input_data.date_strs,
             time_granularity=input_data.time_granularity,
+            has_test_dataset=has_test_dataset,
             media_data_train_scaled=media_data_train_scaled,
             media_data_test_scaled=media_data_test_scaled,
             media_scaler=media_scaler,
@@ -135,6 +149,7 @@ class DataToFit:
         self,
         date_strs,
         time_granularity,
+        has_test_dataset,
         media_data_train_scaled,
         media_data_test_scaled,
         media_scaler,
@@ -156,6 +171,7 @@ class DataToFit:
     ):
         self.date_strs = date_strs
         self.time_granularity = time_granularity
+        self.has_test_dataset = has_test_dataset
         self.media_data_train_scaled = media_data_train_scaled
         self.media_data_test_scaled = media_data_test_scaled
         self.media_scaler = media_scaler
@@ -206,6 +222,7 @@ class DataToFit:
                 "target_scaler": self.target_scaler.to_dict(),
             },
             "config": {
+                "has_test_dataset": self.has_test_dataset,
                 "target_name": self.target_name,
                 "target_is_log_scale": self.target_is_log_scale,
                 "time_granularity": self.time_granularity,
@@ -224,46 +241,66 @@ class DataToFit:
         """
         observation_data_by_column_name = {}
 
-        media_data_scaled = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
-        media_data_unscaled = self.media_scaler.inverse_transform(media_data_scaled)
-        n_media_channels = media_data_scaled.shape[1]
+        ## media impressions
+
+        if self.has_test_dataset:
+            media_data = np.vstack((self.media_data_train_scaled, self.media_data_test_scaled))
+        else:
+            media_data = self.media_data_train_scaled
+
+        if unscaled:
+            media_data = self.media_scaler.inverse_transform(media_data)
+
+        n_media_channels = media_data.shape[1]
         for media_idx in range(n_media_channels):
             col_name = f"{self.media_names[media_idx]} {constants.DATA_FRAME_IMPRESSIONS_SUFFIX}"
-            media_data_touse = media_data_unscaled if unscaled else media_data_scaled
-            observation_data_by_column_name[col_name] = media_data_touse[:, media_idx]
+            observation_data_by_column_name[col_name] = media_data[:, media_idx]
 
-        media_costs_by_row_scaled = np.vstack(
-            (self.media_costs_by_row_train_scaled, self.media_costs_by_row_test_scaled)
-        )
-        media_costs_by_row_unscaled = self.media_costs_scaler.inverse_transform(
-            media_costs_by_row_scaled
-        )
+        ## media costs
+
+        if self.has_test_dataset:
+            media_costs_by_row = np.vstack(
+                (self.media_costs_by_row_train_scaled, self.media_costs_by_row_test_scaled)
+            )
+        else:
+            media_costs_by_row = self.media_costs_by_row_train_scaled
+
+        if unscaled:
+            media_costs_by_row = self.media_costs_scaler.inverse_transform(media_costs_by_row)
+
         for media_idx in range(n_media_channels):
             col_name = f"{self.media_names[media_idx]} {constants.DATA_FRAME_COST_SUFFIX}"
-            media_costs_by_row_touse = (
-                media_costs_by_row_unscaled if unscaled else media_costs_by_row_scaled
-            )
-            observation_data_by_column_name[col_name] = media_costs_by_row_touse[:, media_idx]
+            observation_data_by_column_name[col_name] = media_costs_by_row[:, media_idx]
 
-        extra_features_data_scaled = np.vstack(
-            (self.extra_features_train_scaled, self.extra_features_test_scaled)
-        )
-        extra_features_data_unscaled = self.extra_features_scaler.inverse_transform(
-            extra_features_data_scaled
-        )
-        for extra_features_idx in range(extra_features_data_scaled.shape[1]):
+        ## extra features
+
+        if self.has_test_dataset:
+            extra_features_data = np.vstack(
+                (self.extra_features_train_scaled, self.extra_features_test_scaled)
+            )
+        else:
+            extra_features_data = self.extra_features_train_scaled
+
+        if unscaled:
+            extra_features_data = self.extra_features_scaler.inverse_transform(extra_features_data)
+
+        for extra_features_idx in range(extra_features_data.shape[1]):
             col_name = self.extra_features_names[extra_features_idx]
-            extra_features_data_touse = (
-                extra_features_data_unscaled if unscaled else extra_features_data_scaled
-            )
-            observation_data_by_column_name[col_name] = extra_features_data_touse[
-                :, extra_features_idx
-            ]
+            observation_data_by_column_name[col_name] = extra_features_data[:, extra_features_idx]
 
-        target_data_scaled = np.hstack((self.target_train_scaled, self.target_test_scaled))
-        target_data_unscaled = self.target_scaler.inverse_transform(target_data_scaled)
-        target_data_touse = target_data_unscaled if unscaled else target_data_scaled
-        observation_data_by_column_name[self.target_name] = target_data_touse
+        ## target data
+
+        if self.has_test_dataset:
+            target_data_scaled = np.hstack((self.target_train_scaled, self.target_test_scaled))
+        else:
+            target_data_scaled = self.target_train_scaled
+
+        if unscaled:
+            observation_data_by_column_name[
+                self.target_name
+            ] = self.target_scaler.inverse_transform(target_data_scaled)
+        else:
+            observation_data_by_column_name[self.target_name] = target_data_scaled
 
         # TODO push conversion to datetime upstream so that it is common across all data sets
         per_observation_df = pd.DataFrame(
@@ -278,13 +315,16 @@ class DataToFit:
 
         channel_data_by_column_name = {}
 
-        media_costs_unscaled = self.media_costs_scaler.inverse_transform(self.media_costs_scaled)
-        media_costs_touse = media_costs_unscaled if unscaled else self.media_costs_scaled
-        channel_data_by_column_name["Cost"] = media_costs_touse
-
-        media_priors_unscaled = self.media_costs_scaler.inverse_transform(self.media_priors_scaled)
-        media_priors_touse = media_priors_unscaled if unscaled else self.media_priors_scaled
-        channel_data_by_column_name["Prior"] = media_priors_touse
+        if unscaled:
+            channel_data_by_column_name["Cost"] = self.media_costs_scaler.inverse_transform(
+                self.media_costs_scaled
+            )
+            channel_data_by_column_name["Prior"] = self.media_costs_scaler.inverse_transform(
+                self.media_priors_scaled
+            )
+        else:
+            channel_data_by_column_name["Cost"] = self.media_costs_scaled
+            channel_data_by_column_name["Prior"] = self.media_priors_scaled
 
         per_channel_df = pd.DataFrame(
             data=channel_data_by_column_name, index=self.media_names, dtype=np.float64, copy=True

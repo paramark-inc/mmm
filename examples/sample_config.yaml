@@ -43,6 +43,10 @@ data_rows:
   start_date: 2023-01-01
   end_date: 2023-04-27
 
+# Proportion of the dataset to use for training (in-sample), with the remainder
+# used for an out-of-sample test. Defaults to 90% train, 10% test.
+train_test_ratio: 0.9
+
 ################################
 # Column definitions
 ################################

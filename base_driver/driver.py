@@ -53,7 +53,7 @@ class MMMBaseDriver:
         config: dict,
         model_filename: str = None,
     ) -> (DataToFit, LightweightMMM):
-        data_to_fit = DataToFit.from_input_data(input_data=input_data_processed)
+        data_to_fit = DataToFit.from_input_data(input_data=input_data_processed, config=config)
 
         model_name = config["model_name"]
         degrees_seasonality = config["degrees_seasonality"]
