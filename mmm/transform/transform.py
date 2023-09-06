@@ -54,6 +54,7 @@ def transform_input_generic(data_dict: dict, config: dict):
     )
 
     media_costs = np.zeros(shape=num_media_channels, dtype=np.float64)
+    media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
     media_costs_by_row = np.zeros(
         shape=(data_dict[constants.KEY_OBSERVATIONS], num_media_channels), dtype=np.float64
     )
@@ -81,6 +82,12 @@ def transform_input_generic(data_dict: dict, config: dict):
             media_costs_by_row,
             i,
         )
+
+        fixed_prior = media_config.get("fixed_prior_value")
+        if fixed_prior:
+            media_priors[i] = fixed_prior
+        else:
+            media_priors[i] = media_costs[i]
 
         media_names.append(display_name)
         column_names.remove(impressions_col)
@@ -112,7 +119,7 @@ def transform_input_generic(data_dict: dict, config: dict):
         media_data=media_data,
         media_costs=media_costs,
         media_costs_by_row=media_costs_by_row,
-        media_priors=media_costs,
+        media_priors=media_priors,
         media_names=media_names,
         extra_features_data=extra_features_data,
         extra_features_names=extra_features_names,
