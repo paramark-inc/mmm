@@ -5,6 +5,7 @@ To run MMM, you'll need to create a `yaml` config file with the following parame
 * `model_name`: specifies the underlying mathematical formula used by the model.  One of `adstock`, `hill_adstock`, and `carryover`.
 * `number_warmup`: number of samples taken during the warm up phase.  These samples will be discarded.  We recommend a value of at least 1000.
 * `number_samples`: number of samples taken during the modeling phase.  These samples will be used by the model.  We recommend a value of at least 1000.
+* `number_chains`: number of chains to sample on.  Valid values range from 1 to the number of CPU cores on the system.  Running with multiple chains allows the model to perform a more robust test of the sampling accuracy / repeatability.  This comes at the cost of a longer runtime.
 * `degrees_seasonality`: integer number of degrees of seasonality.  Larger numbers indicate more nested seasonality effect.  We recommend starting with 1, 2, or 3.
 * `weekday_seasonality`: controls how the model handles day of week changes.  `null` to automatically derive the value, `true` to generate day of week coefficients for daily data, `false` to omit day of week coefficients.
 * `seed`: fixed seed for random numbers in the MCMC process. When this isn't set, a new seed is generated each time, so model coefficients will be slightly different even for the same data. Note that JAX [uses seeds differently to numpy](https://jax.readthedocs.io/en/latest/jax-101/05-random-numbers.html).

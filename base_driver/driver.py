@@ -70,6 +70,7 @@ class MMMBaseDriver:
                 weekday_seasonality=config["weekday_seasonality"],
                 number_warmup=config["number_warmup"],
                 number_samples=config["number_samples"],
+                number_chains=config["number_chains"],
                 seed=config.get("seed"),
             )
 

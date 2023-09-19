@@ -16,6 +16,7 @@ def fit_lightweight_mmm(
     weekday_seasonality=None,
     number_warmup=2000,
     number_samples=2000,
+    number_chains=1,
     seed=None,
 ):
     """
@@ -31,8 +32,10 @@ def fit_lightweight_mmm(
                                 much day to day swing in the results.
 
                                 Do not pass a value if you have weekly data.
-    :param number_warmup to pass through to lightweightMMM
-    :param number_samples to pass through to lightweightMMM
+    :param number_warmup to pass through to lightweightMMM.
+    :param number_samples to pass through to lightweightMMM.
+    :param number_chains to pass through to lightweightMMM.  Cannot be more than the number of CPUs
+           on the system.
     :return: lightweightMMM instance
     """
     assert model_name in (
@@ -69,8 +72,7 @@ def fit_lightweight_mmm(
     else:
         fit_params["weekday_seasonality"] = weekday_seasonality
 
-    # number_chains=1 because my laptop has only one CPU (jax.local_device_count())
-    fit_params["number_chains"] = 1
+    fit_params["number_chains"] = number_chains
 
     # manually generate a seed in the same way as lightweight mmm's
     # fit(), and store it for future reproducibility

@@ -14,6 +14,7 @@ model_name: carryover
 # Markov chain Monte Carlo process; higher values mean slower runtime.
 number_warmup: 1000
 number_samples: 1000
+number_chains: 2
 
 # These lightweight_mmm options specify how to handle seasonality: the expected
 # number of degrees of freedom, and whether to separately model intra-week variation.

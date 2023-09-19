@@ -1,7 +1,9 @@
 import click
+import multiprocessing
 import os
 import sys
 
+os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={multiprocessing.cpu_count()}"
 sys.path.append(os.path.join(os.path.dirname(__file__), "impl", "lightweight_mmm"))
 
 from base_driver import MMMBaseDriver
