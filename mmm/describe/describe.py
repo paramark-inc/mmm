@@ -1,4 +1,5 @@
 from contextlib import redirect_stdout
+import math
 import numpy as np
 import jax.numpy as jnp
 import pandas as pd
@@ -280,10 +281,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
     )
+    num_pages = math.ceil(len(input_data.media_names) / 5)
     fig = plot_response_curves(
         media_mix_model=mmm,
         media_scaler=data_to_fit.media_scaler,
         target_scaler=data_to_fit.target_scaler,
+        figure_size=(8, 10 * num_pages),
         costs_per_day=costs_per_day_unscaled,
         percentage_add=0.0,
         response_metric="target",
@@ -295,6 +298,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         media_mix_model=mmm,
         media_scaler=data_to_fit.media_scaler,
         target_scaler=data_to_fit.target_scaler,
+        figure_size=(8, 10 * num_pages),
         costs_per_day=costs_per_day_unscaled,
         percentage_add=0.0,
         response_metric="cost_per_target",
