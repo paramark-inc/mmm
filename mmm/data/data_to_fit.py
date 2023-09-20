@@ -37,6 +37,9 @@ class DataToFit:
         extra_features_train = input_data.extra_features_data[:split_point, :]
         target_train = input_data.target_data[:split_point]
 
+        n_media_channels = len(input_data.media_names)
+        n_extra_features = len(input_data.extra_features_names)
+
         if split_point < data_size:
             has_test_dataset = True
             media_data_test = input_data.media_data[split_point:, :]
@@ -45,9 +48,9 @@ class DataToFit:
             target_test = input_data.target_data[split_point:]
         else:
             has_test_dataset = False
-            media_data_test = np.array([])
-            media_costs_by_row_test = np.array([])
-            extra_features_test = np.array([])
+            media_data_test = np.ndarray(shape=(0, n_media_channels))
+            media_costs_by_row_test = np.ndarray(shape=(0, n_media_channels))
+            extra_features_test = np.ndarray(shape=(0, n_extra_features))
             target_test = np.array([])
 
         # Scale data (ignoring the zeroes in the media data).  Call fit only the first time because
@@ -81,8 +84,8 @@ class DataToFit:
             extra_features_test_scaled = extra_features_scaler.transform(extra_features_test)
             target_test_scaled = target_scaler.transform(target_test)
         else:
-            media_data_test_scaled = np.array([])
-            extra_features_test_scaled = np.array([])
+            media_data_test_scaled = np.ndarray(shape=media_data_test.shape)
+            extra_features_test_scaled = np.ndarray(shape=extra_features_test.shape)
             target_test_scaled = np.array([])
 
         media_priors_scaled = media_cost_scaler.transform(input_data.media_priors)
