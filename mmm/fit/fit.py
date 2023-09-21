@@ -87,6 +87,12 @@ def fit_lightweight_mmm(
     # remove parameter(s) that we want to write, but don't want in fit()
     del fit_params["model_name"]
 
+    # If you hit "RuntimeError: Cannot find valid initial parameters. Please
+    # check your model again." while fitting the model, and are running on x64, consider trying
+    # the following jax option.  See https://github.com/google/lightweight_mmm/issues/77.
+    #
+    # jax.config.update("jax_enable_x64", True)
+
     mmm.fit(
         media=data_to_fit.media_data_train_scaled,
         media_names=data_to_fit.media_names,
