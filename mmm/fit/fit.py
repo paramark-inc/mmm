@@ -18,6 +18,7 @@ def fit_lightweight_mmm(
     number_samples=2000,
     number_chains=1,
     seed=None,
+    custom_priors=None,
 ):
     """
     fit a lightweight mmm model to input_data
@@ -98,6 +99,7 @@ def fit_lightweight_mmm(
         media_names=data_to_fit.media_names,
         extra_features=extra_features,
         target=data_to_fit.target_train_scaled,
+        custom_priors=custom_priors,
         **fit_params
     )
 

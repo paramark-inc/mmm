@@ -52,6 +52,7 @@ class MMMBaseDriver:
         input_data_processed: InputData,
         config: dict,
         model_filename: str = None,
+        custom_priors: dict = None,
     ) -> (DataToFit, LightweightMMM):
         data_to_fit = DataToFit.from_input_data(input_data=input_data_processed, config=config)
 
@@ -62,6 +63,8 @@ class MMMBaseDriver:
             model = load_model(model_filename=model_filename)
         else:
             print(f"fitting a model for {model_name} degrees_seasonality={degrees_seasonality}")
+            if custom_priors:
+                print(f"setting custom_priors for {list(custom_priors.keys())}")
             model = fit_lightweight_mmm(
                 data_to_fit=data_to_fit,
                 model_name=model_name,
@@ -72,6 +75,7 @@ class MMMBaseDriver:
                 number_samples=config["number_samples"],
                 number_chains=config["number_chains"],
                 seed=config.get("seed"),
+                custom_priors=custom_priors,
             )
 
         return data_to_fit, model
