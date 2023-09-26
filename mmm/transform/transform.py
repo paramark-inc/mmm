@@ -90,8 +90,12 @@ def transform_input_generic(data_dict: dict, config: dict):
             media_priors[i] = media_costs[i]
 
         media_names.append(display_name)
+
         column_names.remove(impressions_col)
-        column_names.remove(spend_col)
+        # if we are using spend as the input metric, the spend column is the same as the
+        # impressions column, so don't try to remove it twice.
+        if impressions_col != spend_col:
+            column_names.remove(spend_col)
 
     # after copying spend/impression data for each media channel, loop over
     # the remaining columns to populate target and extra features
