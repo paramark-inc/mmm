@@ -26,6 +26,17 @@ weekday_seasonality: null
 # seed generated with get_time_seed() in lightweight_mmm.
 # seed: 1
 
+# Custom priors: use this to guide the model based on what you already know
+# about the range of possible values for a parameter (typically after running
+# many MMMs and/or many experiments).
+# This example sets a prior for the baseline trend coefficient to a normal
+# distribution with mean 0 and stddev 1 (same as lightweight_mmm's default).
+# custom_priors:
+#   coef_trend:
+#     type: normal
+#     loc: 0
+#     scale: 1
+
 ################################
 # Data handling options
 ################################

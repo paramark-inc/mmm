@@ -3,6 +3,7 @@ from impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from mmm.constants import constants
 
+import numpyro
 import os
 import yaml
 
@@ -18,7 +19,7 @@ def fit_lightweight_mmm(
     number_samples=2000,
     number_chains=1,
     seed=None,
-    custom_priors=None,
+    custom_prior_config=None,
 ):
     """
     fit a lightweight mmm model to input_data
@@ -54,11 +55,12 @@ def fit_lightweight_mmm(
         extra_features = data_to_fit.extra_features_train_scaled
 
     fit_params = {
-        "model_name": model_name,
+        "custom_priors": custom_prior_config,
         "degrees_seasonality": degrees_seasonality,
+        "media_prior": data_to_fit.media_priors_scaled.tolist(),
+        "model_name": model_name,
         "number_warmup": number_warmup,
         "number_samples": number_samples,
-        "media_prior": data_to_fit.media_priors_scaled.tolist(),
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
@@ -85,8 +87,31 @@ def fit_lightweight_mmm(
     with open(os.path.join(results_dir, "fit_params.yaml"), "w") as output_file:
         yaml.dump(fit_params, output_file, default_flow_style=False)
 
-    # remove parameter(s) that we want to write, but don't want in fit()
-    del fit_params["model_name"]
+    custom_priors = None
+    if custom_prior_config is not None:
+        custom_priors = {}
+        print(f"setting custom_priors for {', '.join(custom_prior_config.keys())}")
+
+        for name, definition in custom_prior_config.items():
+            if definition["type"] == "halfnormal":
+                custom_priors[name] = numpyro.distributions.HalfNormal(definition["scale"])
+            elif definition["type"] == "normal":
+                custom_priors[name] = numpyro.distributions.Normal(
+                    definition["loc"], definition["scale"]
+                )
+            elif definition["type"] == "uniform":
+                custom_priors[name] = numpyro.distributions.Uniform(
+                    definition["low"],
+                    definition["high"],
+                )
+            elif definition["type"] == "gamma":
+                custom_priors[name] = numpyro.distributions.Gamma(
+                    definition["concentration"],
+                    definition["rate"],
+                )
+
+    # remove parameter(s) that we want to write, but don't pass directly to fit()
+    del fit_params["model_name"], fit_params["custom_priors"]
 
     # If you hit "RuntimeError: Cannot find valid initial parameters. Please
     # check your model again." while fitting the model, and are running on x64, consider trying
@@ -100,7 +125,7 @@ def fit_lightweight_mmm(
         extra_features=extra_features,
         target=data_to_fit.target_train_scaled,
         custom_priors=custom_priors,
-        **fit_params
+        **fit_params,
     )
 
     return mmm
