@@ -4,6 +4,7 @@ import numpy as np
 import jax.numpy as jnp
 import pandas as pd
 import os
+import lightweight_mmm.lightweight_mmm
 
 from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
@@ -19,6 +20,8 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
 from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
 
 from mmm.constants import constants
+from mmm.data.input_data import InputData
+from mmm.data.data_to_fit import DataToFit
 from mmm.outlier.outlier import print_outliers
 from mmm.plot.plot import plot_all_metrics
 
@@ -52,21 +55,85 @@ def describe_config(output_dir, config, git_sha):
         f.write(config)
 
 
-def _dump_posterior_metrics(
-    data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat, results_dir
-):
+def _compute_blended_media_effect_hat(media_effect_hat: np.ndarray) -> np.ndarray:
     """
-    write posterior metrics to a file
+    Compute blended media effect hat.
 
-    :param data_to_fit: DataToFit instance
-    :param media_effect_hat: see LightweightMMM.get_posterior_metrics
-    :param roi_hat: see LightweightMMM.get_posterior_metrics
-    :param cost_per_target_hat: the inverse of ROI hat (cost per target)
-    :param results_dir: results directory
+    Args:
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+
+    Returns:
+        Array of blended media effect values, with axes:
+          0: sample
     """
     # blended_media_effect_hat => array with one dimension (sample_count) representing the overall
     # media effect across the training period, as a percentage of the total target prediction.
     blended_media_effect_hat = media_effect_hat.sum(axis=1)
+
+    return blended_media_effect_hat
+
+
+def get_media_effect_df(data_to_fit: DataToFit, media_effect_hat: np.ndarray) -> pd.DataFrame:
+    """
+    Build and return a dataframe of media effect values.
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+
+    Returns:
+        DataFrame of media effect values
+    """
+    blended_media_effect_hat = _compute_blended_media_effect_hat(media_effect_hat)
+    blended_media_effect_quantiles = np.quantile(blended_media_effect_hat, [0.05, 0.95])
+
+    media_effect_df = pd.DataFrame(
+        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
+    )
+
+    media_effect_df.loc["blended", "0.05"] = blended_media_effect_quantiles[0]
+    media_effect_df.loc["blended", "0.95"] = blended_media_effect_quantiles[1]
+    media_effect_df.loc["blended", "median"] = np.median(blended_media_effect_hat)
+    media_effect_df.loc["blended", "mean"] = np.mean(blended_media_effect_hat)
+
+    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+        quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
+        mean = np.mean(media_effect_hat[:, media_idx])
+        median = np.median(media_effect_hat[:, media_idx])
+        media_name = data_to_fit.media_names[media_idx]
+        media_effect_df.loc[media_name, "0.05"] = quantiles[0]
+        media_effect_df.loc[media_name, "0.95"] = quantiles[1]
+        media_effect_df.loc[media_name, "median"] = median
+        media_effect_df.loc[media_name, "mean"] = mean
+
+    return media_effect_df
+
+
+def _compute_blended_roi_hat(
+    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+) -> np.ndarray:
+    """
+    Compute blended ROI hat.
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+        roi_hat: ndarray with axes
+          0: samples
+          1: channels
+
+    Returns:
+        ndarray with axes:
+          0: samples
+    """
+    blended_media_effect_hat = _compute_blended_media_effect_hat(media_effect_hat)
+
     # target_sum_train_unscaled => scalar, unscaled sum of target values over the training period
     target_sum_train_unscaled = data_to_fit.target_scaler.inverse_transform(
         data_to_fit.target_train_scaled
@@ -82,104 +149,181 @@ def _dump_posterior_metrics(
     # across the training period (total target metric prediction attributable to media spend /
     # total media cost)
     blended_roi_hat = incremental_target_sum_hat / total_cost_train_unscaled
-    # blended cost per target => array with one dimension (sample_count) representing the overall
-    # cost per target metric prediction attributable to media spend (i.e. truly incremental
-    # acquisitions)
-    blended_cost_per_target_hat = 1.0 / blended_roi_hat
-
-    output_fname = os.path.join(results_dir, "media_performance_breakdown.txt")
-    with open(output_fname, "w") as f:
-        f.write(f"Blended Media Effect:\n")
-        f.write(f"mean={np.mean(blended_media_effect_hat):,.6f}\n")
-        f.write(f"median={np.median(blended_media_effect_hat):,.6f}\n")
-        quantiles = np.quantile(blended_media_effect_hat, [0.05, 0.95])
-        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
-
-        f.write(f"Blended ROI:\n")
-        f.write(f"mean={np.mean(blended_roi_hat):,.6f}\n")
-        f.write(f"median={np.median(blended_roi_hat):,.6f}\n")
-        quantiles = np.quantile(blended_roi_hat, [0.05, 0.95])
-        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
-
-        f.write(f"Blended Cost Per Target:\n")
-        f.write(f"mean={np.mean(blended_cost_per_target_hat):,.6f}\n")
-        f.write(f"median={np.median(blended_cost_per_target_hat):,.6f}\n")
-        quantiles = np.quantile(blended_cost_per_target_hat, [0.05, 0.95])
-        f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
-
-        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-            f.write(f"{data_to_fit.media_names[media_idx]} Media Effect:\n")
-            f.write(f"mean={np.mean(media_effect_hat[:, media_idx]):,.6f}\n")
-            f.write(f"median={np.median(media_effect_hat[:, media_idx]):,.6f}\n")
-            quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
-            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
-
-        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-            f.write(f"{data_to_fit.media_names[media_idx]} ROI:\n")
-            f.write(f"mean={np.mean(roi_hat[:, media_idx]):,.6f}\n")
-            f.write(f"median={np.median(roi_hat[:, media_idx]):,.6f}\n")
-            quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
-            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
-
-        for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-            f.write(f"{data_to_fit.media_names[media_idx]} Cost Per Target:\n")
-            f.write(f"mean={np.mean(cost_per_target_hat[:, media_idx]):,.6f}\n")
-            f.write(f"median={np.median(cost_per_target_hat[:, media_idx]):,.6f}\n")
-            quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
-            f.write(f"[0.05, 0.95]=[{quantiles[0]:,.6f}, {quantiles[1]:,.6f}]\n\n")
+    return blended_roi_hat
 
 
-def _dump_baseline_breakdown(
-    media_mix_model, input_data, data_to_fit, degrees_seasonality, results_dir
+def get_roi_df(
+    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+) -> pd.DataFrame:
+    """
+    Build and return a dataframe of ROI values.
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+        roi_hat: array of roi values, with axes:
+          0: sample
+          1: channel
+
+    Returns:
+        DataFrame of ROI values
+    """
+    blended_roi_hat = _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
+    blended_roi_quantiles = np.quantile(blended_roi_hat, [0.05, 0.95])
+
+    roi_df = pd.DataFrame(
+        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
+    )
+
+    roi_df.loc["blended", "0.05"] = blended_roi_quantiles[0]
+    roi_df.loc["blended", "0.95"] = blended_roi_quantiles[1]
+    roi_df.loc["blended", "median"] = np.median(blended_roi_hat)
+    roi_df.loc["blended", "mean"] = np.mean(blended_roi_hat)
+
+    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+        quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
+        mean = np.mean(roi_hat[:, media_idx])
+        median = np.median(roi_hat[:, media_idx])
+        media_name = data_to_fit.media_names[media_idx]
+        roi_df.loc[media_name, "0.05"] = quantiles[0]
+        roi_df.loc[media_name, "0.95"] = quantiles[1]
+        roi_df.loc[media_name, "median"] = median
+        roi_df.loc[media_name, "mean"] = mean
+
+    return roi_df
+
+
+def _compute_blended_cost_per_target_hat(
+    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+) -> np.ndarray:
+    """
+    Compute blended cost per target hat
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+        roi_hat: array of roi values, with axes:
+          0: sample
+          1: channel
+
+    Returns:
+        ndarray of blended cost per target hat values with axes:
+          0: samples
+
+    """
+    return 1.0 / _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
+
+
+def get_cost_per_target_df(
+    data_to_fit: DataToFit,
+    media_effect_hat: np.ndarray,
+    roi_hat: np.ndarray,
+    cost_per_target_hat: np.ndarray,
+) -> pd.DataFrame:
+    """
+    Build and return a dataframe of cost per target values.
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_effect_hat: array of media effect values, with axes:
+           0: sample
+           1: channel
+        roi_hat: ndarray with axes
+          0: samples
+          1: channels
+        cost_per_target_hat: cost per target metric values, with axes:
+          0: sample
+          1: channel
+
+    Returns:
+        DataFrame of cost per target values
+    """
+    blended_cost_per_target_hat = _compute_blended_cost_per_target_hat(
+        data_to_fit, media_effect_hat, roi_hat
+    )
+    blended_cost_per_target_quantiles = np.quantile(blended_cost_per_target_hat, [0.05, 0.95])
+
+    cost_per_target_df = pd.DataFrame(
+        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
+    )
+
+    cost_per_target_df.loc["blended", "0.05"] = blended_cost_per_target_quantiles[0]
+    cost_per_target_df.loc["blended", "0.95"] = blended_cost_per_target_quantiles[1]
+    cost_per_target_df.loc["blended", "median"] = np.median(blended_cost_per_target_hat)
+    cost_per_target_df.loc["blended", "mean"] = np.mean(blended_cost_per_target_hat)
+
+    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+        quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
+        mean = np.mean(cost_per_target_hat[:, media_idx])
+        median = np.median(cost_per_target_hat[:, media_idx])
+        media_name = data_to_fit.media_names[media_idx]
+        cost_per_target_df.loc[media_name, "0.05"] = quantiles[0]
+        cost_per_target_df.loc[media_name, "0.95"] = quantiles[1]
+        cost_per_target_df.loc[media_name, "median"] = median
+        cost_per_target_df.loc[media_name, "mean"] = mean
+
+    return cost_per_target_df
+
+
+def _dump_posterior_metrics(
+    results_dir: str,
+    media_effect_df: pd.DataFrame,
+    roi_df: pd.DataFrame,
+    cost_per_target_df: pd.DataFrame,
 ):
     """
-    Break down the baseline into its component pieces and write the results to a text file.
+    Write posterior metrics to CSV files
 
-    :param media_mix_model: LightweightMMM instance
-    :param input_data: InputData instance
-    :param data_to_fit: DataToFit instance
-    :param degrees_seasonality: Degrees of seasonality used to fit the model
-    :param results_dir: results directory to write to
-    :return: None
+    Args:
+        results_dir: directory to write to
+        media_effect_df: DataFrame of media effect values
+        roi_df: DataFrame of ROI values
+        cost_per_target_df: DataFrame of cost per target values
+
+    Returns:
+        None
     """
+    media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
+    roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
+    cost_per_target_df.to_csv(os.path.join(results_dir, "media_performance_cost_per_target.csv"))
 
-    # media_einsum = "tc, c -> t"  # t = time, c = channel
-    # extra_features_einsum = "tf, f -> t"  # t = time, f = feature
-    # target = intercept +
-    #          coef_trend * trend ** expo_trend +
-    #          seasonality +
-    #          jnp.einsum(media_einsum, media_transformed, coef_media) +
-    #          jnp.einsum(extra_features_einsum,
-    #                     extra_features,
-    #                     coef_extra_features)
-    # with an extra term for weekday cases:
-    #          weekday[jnp.arange(data_size) % 7]
 
-    # Array shapes:
-    #   intercept = (samples, 1)
-    #   coef_trend = (samples, 1)
-    #   expo_trend = (samples,)
-    #   media_transformed = (samples, observations, channels)
-    #   coef_media = (samples, channels)
-    #   coef_extra_features = (samples, features)
-    #   coef_weekday = (samples, 7)
-    #
+def get_baseline_breakdown_df(
+    media_mix_model: lightweight_mmm.lightweight_mmm.LightweightMMM,
+    input_data: InputData,
+    data_to_fit: DataToFit,
+    degrees_seasonality: int,
+) -> pd.DataFrame:
+    """
+    Break down the baseline into its component pieces and return a DataFrame with the results.
 
-    mmm = media_mix_model
+    Args:
+        media_mix_model: LightweightMMM instance
+        input_data: InputData instance
+        data_to_fit: DataToFit instance
+        degrees_seasonality: Degrees of seasonality used to fit the model
+
+    Returns:
+        DataFrame with a breakdown of the baseline components for a given timestamp in each row.
+    """
     num_observations = data_to_fit.media_data_train_scaled.shape[0]
-    intercept = jnp.median(jnp.squeeze(mmm.trace["intercept"]))
-    coef_trend = jnp.median(jnp.squeeze(mmm.trace["coef_trend"]))
-    expo_trend = jnp.median(mmm.trace["expo_trend"])
+    intercept = jnp.median(jnp.squeeze(media_mix_model.trace["intercept"]))
+    coef_trend = jnp.median(jnp.squeeze(media_mix_model.trace["coef_trend"]))
+    expo_trend = jnp.median(media_mix_model.trace["expo_trend"])
     if data_to_fit.extra_features_train_scaled.shape[1]:
-        coef_extra_features = jnp.median(mmm.trace["coef_extra_features"], axis=0)
+        coef_extra_features = jnp.median(media_mix_model.trace["coef_extra_features"], axis=0)
     else:
         coef_extra_features = None
-    gamma_seasonality = jnp.median(mmm.trace["gamma_seasonality"], axis=0)
+    gamma_seasonality = jnp.median(media_mix_model.trace["gamma_seasonality"], axis=0)
 
     columns = ["intercept", "trend", "seasonality"]
 
     if input_data.time_granularity == constants.GRANULARITY_DAILY:
-        weekday = jnp.median(mmm.trace["weekday"], axis=0)
+        weekday = jnp.median(media_mix_model.trace["weekday"], axis=0)
         columns.append("weekday")
     else:
         weekday = None
@@ -217,7 +361,7 @@ def _dump_baseline_breakdown(
     data = data_to_fit.target_scaler.inverse_transform(data)
 
     baseline_breakdown_df = pd.DataFrame(data=data, columns=columns)
-    baseline_breakdown_df["sum"] = baseline_breakdown_df.sum(axis=1)
+    baseline_breakdown_df["sum_of_medians"] = baseline_breakdown_df.sum(axis=1)
 
     # because the total baseline computed here in the 'sum' column is a less accurate estimate than
     # the one computed by create_media_baseline_contribution_df() for the weekly media and baseline
@@ -231,27 +375,29 @@ def _dump_baseline_breakdown(
         target_scaler=data_to_fit.target_scaler,
         channel_names=data_to_fit.media_names,
     )
-    baseline_breakdown_df["model_baseline"] = plot_df["baseline contribution"]
+    baseline_breakdown_df["chart_baseline_value"] = plot_df["baseline contribution"]
 
-    with open(os.path.join(results_dir, "baseline_breakdown.txt"), "w") as f:
-        f.write("Mean value by component:\n\n")
-        f.write(f"intercept={baseline_breakdown_df['intercept'].mean():,.4f}\n")
-        f.write(f"trend={baseline_breakdown_df['trend'].mean():,.4f}\n")
-        f.write(f"seasonality={baseline_breakdown_df['seasonality'].mean():,.4f}\n")
-        for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
-            extra_feature_name = data_to_fit.extra_features_names[j]
-            f.write(
-                f"{extra_feature_name}={baseline_breakdown_df[extra_feature_name].mean():,.4f}\n"
-            )
-        if weekday is not None:
-            f.write(f"weekday={baseline_breakdown_df['weekday'].mean():,.4f}\n")
-        f.write(f"sum={baseline_breakdown_df['sum'].mean():,.4f}\n")
-
-        f.write("\n")
-        f.write("Row by Row breakdown:\n\n")
-        f.write(baseline_breakdown_df.to_string(float_format=lambda x: f"{x:,.4f}"))
+    baseline_breakdown_df["date"] = pd.to_datetime(data_to_fit.date_strs[:num_observations])
+    baseline_breakdown_df = baseline_breakdown_df.set_index("date")
 
     return baseline_breakdown_df
+
+
+def _dump_baseline_breakdown(
+    results_dir: str,
+    baseline_breakdown_df: pd.DataFrame,
+):
+    """
+    Write the baseline breakdown to a file.
+
+    Args:
+        results_dir: Directory to write to
+        baseline_breakdown_df: See get_baseline_breakdown_df
+
+    Returns:
+        None
+    """
+    baseline_breakdown_df.to_csv(os.path.join(results_dir, "baseline_breakdown.csv"))
 
 
 def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, results_dir):
@@ -314,12 +460,12 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
         unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
     )
     cost_per_target_hat = 1.0 / roi_hat
+
     _dump_posterior_metrics(
-        data_to_fit=data_to_fit,
-        media_effect_hat=media_effect_hat,
-        roi_hat=roi_hat,
-        cost_per_target_hat=cost_per_target_hat,
-        results_dir=results_dir,
+        results_dir,
+        get_media_effect_df(data_to_fit, media_effect_hat),
+        get_roi_df(data_to_fit, media_effect_hat, roi_hat),
+        get_cost_per_target_df(data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat),
     )
 
     fig = plot_bars_media_metrics(
@@ -374,11 +520,7 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     fig.savefig(output_fname, bbox_inches="tight")
 
     _dump_baseline_breakdown(
-        media_mix_model=mmm,
-        input_data=input_data,
-        data_to_fit=data_to_fit,
-        degrees_seasonality=degrees_seasonality,
-        results_dir=results_dir,
+        results_dir, get_baseline_breakdown_df(mmm, input_data, data_to_fit, degrees_seasonality)
     )
 
     fig = plot_media_baseline_contribution_area_plot(
