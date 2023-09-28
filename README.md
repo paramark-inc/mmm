@@ -44,11 +44,11 @@ Before running MMM -- indeed, before any data science project -- it's important 
 
 Once your dataset is ready, your MMM workflow will consist of creating/editing config files, running the code, and then reviewing results.
 
-* **Check your data** 
-  * See `examples/jupyter/1-validate.ipynb` and `examples/jupyter/2-describe.ipynb` for checks and visualizations you can run to understand and improve data hygiene.
+* **Check your data**
+  * See [1-validate.ipynb](./examples/jupyter/1-validate.ipynb) and [2-describe.ipynb](./examples/jupyter/2-describe.ipynb) for checks and visualizations you can run to understand and improve data hygiene.
 * **Write a config file** specifying your data format and hyperparameters for the model.
-  * See `examples/sample_config.yaml` for an example.
-  * See `docs/config.md` for documentation on config parameters.
+  * See [sample_config.yaml](./examples/sample_config.yaml) for an example.
+  * See [config.md](./docs/config.md) for documentation on config parameters.
 * **Run the code.**
   * `python3 run.py` is the main entrypoint.
   * Use `-f` to pass the path to your CSV data file.
@@ -57,10 +57,10 @@ Once your dataset is ready, your MMM workflow will consist of creating/editing c
   * By default, output files will be created in a directory called `results/` inside the repo.
   * Start with `model_fit_in_sample.png`, showing model fit for the training set. You don't expect this fit to be perfect, but you do expect the model to pick up trends and be able to predict the general shape of the curve.
   * Model fit for the train/holdout set is shown in `model_fit_out_of_sample.png`.
-  * See `examples/jupyter/3-analyze.ipynb` for analyses you can do to improve your model fit.
+  * See [3-analyze.ipynb](./examples/jupyter/3-analyze.ipynb) for analyses you can do to improve your model fit.
   * The model's estimate of cost per target unit for each channel is shown in `media_cost_per_target_median.png` and `media_cost_per_target_mean.png`.
   * The attribution chart in `weekly_media_and_baseline_contribution.png` shows how much of the predicted target was attributed by the model to each of your marketing channels, over time.
-  * See `docs/results.md` for more information about the other files in the `results/` directory.
+  * See [results.md](./docs/results.md) for more information about the other files in the `results/` directory.
 
 
 ## Running tests
