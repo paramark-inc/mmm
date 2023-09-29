@@ -16,6 +16,9 @@ from impl.lightweight_mmm.lightweight_mmm.lightweight_mmm import LightweightMMM
 
 
 class MMMBaseDriver:
+    def load_config(self, config_filename):
+        return load_config(config_filename)
+
     def init_output(self, data_dir: str = ".") -> str:
         return make_results_dir(data_dir=data_dir)
 
@@ -99,7 +102,7 @@ class MMMBaseDriver:
         save_model(mmm=model, results_dir=results_dir)
 
     def main(self, config_filename, input_filename):
-        config_raw, config = load_config(config_filename)
+        config_raw, config = self.load_config(config_filename)
         current_commit = git_sha()
 
         results_dir = self.init_output()
