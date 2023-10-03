@@ -39,7 +39,7 @@ def test_plot_all_metrics(output_dir):
             [metric1_costs.sum(), metric2_costs.sum(), metric3_costs.sum()], dtype=np.float64
         ),
         media_costs_by_row=np.column_stack((metric1_costs, metric2_costs, metric3_costs)),
-        media_priors=np.array([0.5, 0.4, 0.3], dtype=np.float64),
+        media_cost_priors=np.array([0.5, 0.4, 0.3], dtype=np.float64),
         media_names=np.array(["metric1", "metric2", "metric3"]),
         extra_features_data=np.ndarray(shape=(0, 0)),
         extra_features_names=np.array([]),

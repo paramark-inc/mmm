@@ -3,6 +3,7 @@ from impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from mmm.constants import constants
 
+import jax.numpy as jnp
 import numpyro
 import os
 import yaml
@@ -54,10 +55,23 @@ def fit_lightweight_mmm(
     else:
         extra_features = data_to_fit.extra_features_train_scaled
 
+    # when we have a learned_media_prior, use it.  Otherwise, use the media_cost_prior.
+    media_priors = jnp.where(
+        data_to_fit.learned_media_priors > 0.0,
+        data_to_fit.learned_media_priors,
+        data_to_fit.media_cost_priors_scaled,
+    ).tolist()
+
+    learned_media_priors_count = len(
+        [p for p in data_to_fit.learned_media_priors.tolist() if p > 0.0]
+    )
+    if learned_media_priors_count > 0:
+        print(f"setting learned media priors for {learned_media_priors_count} channels")
+
     fit_params = {
         "custom_priors": custom_prior_config,
         "degrees_seasonality": degrees_seasonality,
-        "media_prior": data_to_fit.media_priors_scaled.tolist(),
+        "media_prior": media_priors,
         "model_name": model_name,
         "number_warmup": number_warmup,
         "number_samples": number_samples,

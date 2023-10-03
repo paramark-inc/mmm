@@ -26,7 +26,7 @@ class TransformTest(unittest.TestCase):
         self.assertEqual(input_data.extra_features_names, [])
 
         np.testing.assert_array_equal(input_data.media_costs, [55, 15])
-        np.testing.assert_array_equal(input_data.media_priors, [55, 15])
+        np.testing.assert_array_equal(input_data.media_cost_priors, [55, 15])
 
         # verify the two sets of impressions data (columns of input_data.media_data)
         np.testing.assert_array_equal(input_data.media_data[:, 0], range(1, 11))

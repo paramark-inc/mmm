@@ -73,7 +73,7 @@ class DataToFit:
         # and media_costs_by_row in addition to media_priors.  Ordinarily it would be better to have
         # a separate scaler for each, but since only media_priors is used for fitting the MMM model,
         # this achieves the same result.
-        media_cost_scaler.fit(input_data.media_priors)
+        media_cost_scaler.fit(input_data.media_cost_priors)
 
         media_data_train_scaled = media_scaler.transform(media_data_train)
         extra_features_train_scaled = extra_features_scaler.transform(extra_features_train)
@@ -88,7 +88,7 @@ class DataToFit:
             extra_features_test_scaled = np.ndarray(shape=extra_features_test.shape)
             target_test_scaled = np.array([])
 
-        media_priors_scaled = media_cost_scaler.transform(input_data.media_priors)
+        media_cost_priors_scaled = media_cost_scaler.transform(input_data.media_cost_priors)
         media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
         media_costs_by_row_train_scaled = media_cost_scaler.transform(media_costs_by_row_train)
         media_costs_by_row_test_scaled = media_cost_scaler.transform(media_costs_by_row_test)
@@ -101,7 +101,8 @@ class DataToFit:
             media_data_test_scaled=media_data_test_scaled,
             media_scaler=media_scaler,
             media_costs_scaled=media_costs_scaled,
-            media_priors_scaled=media_priors_scaled,
+            media_cost_priors_scaled=media_cost_priors_scaled,
+            learned_media_priors=input_data.learned_media_priors.copy(),
             media_costs_by_row_train_scaled=media_costs_by_row_train_scaled,
             media_costs_by_row_test_scaled=media_costs_by_row_test_scaled,
             media_costs_scaler=media_cost_scaler,
@@ -157,7 +158,8 @@ class DataToFit:
         media_data_test_scaled,
         media_scaler,
         media_costs_scaled,
-        media_priors_scaled,
+        media_cost_priors_scaled,
+        learned_media_priors,
         media_costs_by_row_train_scaled,
         media_costs_by_row_test_scaled,
         media_costs_scaler,
@@ -179,7 +181,8 @@ class DataToFit:
         self.media_data_test_scaled = media_data_test_scaled
         self.media_scaler = media_scaler
         self.media_costs_scaled = media_costs_scaled
-        self.media_priors_scaled = media_priors_scaled
+        self.media_cost_priors_scaled = media_cost_priors_scaled
+        self.learned_media_priors = learned_media_priors
         self.media_costs_by_row_train_scaled = media_costs_by_row_train_scaled
         self.media_costs_by_row_test_scaled = media_costs_by_row_test_scaled
         self.media_costs_scaler = media_costs_scaler
@@ -204,7 +207,8 @@ class DataToFit:
                     "media_data_train_scaled",
                     "media_data_test_scaled",
                     "media_costs_scaled",
-                    "media_priors_scaled",
+                    "media_cost_priors_scaled",
+                    "learned_media_priors",
                     "media_costs_by_row_train_scaled",
                     "media_costs_by_row_test_scaled",
                     "extra_features_train_scaled",
@@ -322,12 +326,15 @@ class DataToFit:
             channel_data_by_column_name["Cost"] = self.media_costs_scaler.inverse_transform(
                 self.media_costs_scaled
             )
-            channel_data_by_column_name["Prior"] = self.media_costs_scaler.inverse_transform(
-                self.media_priors_scaled
+            channel_data_by_column_name["Cost Prior"] = self.media_costs_scaler.inverse_transform(
+                self.media_cost_priors_scaled
             )
         else:
             channel_data_by_column_name["Cost"] = self.media_costs_scaled
-            channel_data_by_column_name["Prior"] = self.media_priors_scaled
+            channel_data_by_column_name["Cost Prior"] = self.media_cost_priors_scaled
+
+        # Learned priors cannot be unscaled
+        channel_data_by_column_name["Learned Prior"] = self.learned_media_priors
 
         per_channel_df = pd.DataFrame(
             data=channel_data_by_column_name, index=self.media_names, dtype=np.float64, copy=True

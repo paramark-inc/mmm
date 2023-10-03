@@ -18,6 +18,12 @@ from mmm.data import DataToFit, InputData
 class DataToFitTest(unittest.TestCase):
     config_filename = os.path.join(os.path.dirname(__file__), "..", "test.yaml")
     csv_filename = os.path.join(os.path.dirname(__file__), "..", "test.csv")
+
+    # if you add or modify attributes on DataToFit and need to re-generate this file, try doing:
+    # 1. Modify test_data_to_fit_to_dict to dump the data_to_fit to a gzip file by adding
+    #      'data_to_fit.dump(".")'.  This will create a file called data_to_fit.gz in
+    #      the directory where you run the test.
+    # 2. Replace test/test_data_to_fit.gz with this file.
     gz_filename = os.path.join(os.path.dirname(__file__), "..", "test_data_to_fit.gz")
 
     # noinspection PyMethodMayBeStatic
@@ -77,7 +83,9 @@ class DataToFitTest(unittest.TestCase):
 
         output = data_to_fit.to_dict()
 
-        assert_array_almost_equal(output["data"]["media_priors_scaled"], [1.5714285, 0.42857143])
+        assert_array_almost_equal(
+            output["data"]["media_cost_priors_scaled"], [1.5714285, 0.42857143]
+        )
         assert_array_equal(
             output["display"]["date_strs"], [f"2023-01-{n:02}" for n in range(1, 11)]
         )

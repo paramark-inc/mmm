@@ -54,7 +54,8 @@ def transform_input_generic(data_dict: dict, config: dict):
     )
 
     media_costs = np.zeros(shape=num_media_channels, dtype=np.float64)
-    media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
+    media_cost_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
+    learned_media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
     media_costs_by_row = np.zeros(
         shape=(data_dict[constants.KEY_OBSERVATIONS], num_media_channels), dtype=np.float64
     )
@@ -83,11 +84,18 @@ def transform_input_generic(data_dict: dict, config: dict):
             i,
         )
 
-        fixed_prior = media_config.get("fixed_prior_value")
-        if fixed_prior:
-            media_priors[i] = fixed_prior
+        # if the yaml specifies a learned prior, we set both the learned prior and the cost
+        # prior.  The latter isn't necessary for fitting (since we ignore it in fit()), but
+        # we keep it here for simplicity.
+        learned_prior = media_config.get("learned_prior")
+        if learned_prior:
+            learned_media_priors[i] = learned_prior
+
+        fixed_cost_prior = media_config.get("fixed_cost_prior")
+        if fixed_cost_prior:
+            media_cost_priors[i] = fixed_cost_prior
         else:
-            media_priors[i] = media_costs[i]
+            media_cost_priors[i] = media_costs[i]
 
         media_names.append(display_name)
 
@@ -123,7 +131,8 @@ def transform_input_generic(data_dict: dict, config: dict):
         media_data=media_data,
         media_costs=media_costs,
         media_costs_by_row=media_costs_by_row,
-        media_priors=media_priors,
+        media_cost_priors=media_cost_priors,
+        learned_media_priors=learned_media_priors,
         media_names=media_names,
         extra_features_data=extra_features_data,
         extra_features_names=extra_features_names,

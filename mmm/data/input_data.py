@@ -21,7 +21,8 @@ class InputData:
         time_granularity,
         media_data,
         media_costs,
-        media_priors,
+        media_cost_priors,
+        learned_media_priors,
         media_names,
         extra_features_data,
         extra_features_names,
@@ -44,15 +45,17 @@ class InputData:
         assert num_channels == media_costs.shape[0], f"{num_channels} {media_costs.shape[0]}"
         assert np.float64 == media_costs.dtype, f"{np.float64} {media_costs.dtype}"
 
-        assert 1 == media_priors.ndim, f"{media_priors.ndim}"
-        assert num_channels == media_priors.shape[0], f"{num_channels} {media_priors.shape[0]}"
-        assert np.float64 == media_priors.dtype, f"{np.float64} {media_priors.dtype}"
+        assert 1 == media_cost_priors.ndim, f"{media_cost_priors.ndim}"
+        assert (
+            num_channels == media_cost_priors.shape[0]
+        ), f"{num_channels} {media_cost_priors.shape[0]}"
+        assert np.float64 == media_cost_priors.dtype, f"{np.float64} {media_cost_priors.dtype}"
         # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
         # constraint on all values.
-        for idx, prior in np.ndenumerate(media_priors):
+        for idx, prior in np.ndenumerate(media_cost_priors):
             assert (
-                prior > 0.0
-            ), f"Media channel {media_names[idx[0]]} has zero prior. Make sure this channel's cost column has non-zero and non-NaN values."
+                prior > 0.0 or learned_media_priors[idx] > 0.0
+            ), f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified. Make sure this channel's cost column has non-zero and non-NaN values."
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
@@ -107,7 +110,8 @@ class InputData:
             media_data=media_data_copy,
             media_costs=input_data.media_costs.copy(),
             media_costs_by_row=input_data.media_costs_by_row.copy(),
-            media_priors=input_data.media_priors.copy(),
+            media_cost_priors=input_data.media_cost_priors.copy(),
+            learned_media_priors=input_data.learned_media_priors.copy(),
             media_names=input_data.media_names.copy(),
             extra_features_data=extra_features_data_copy,
             extra_features_names=input_data.extra_features_names.copy(),
@@ -124,7 +128,8 @@ class InputData:
         media_data,
         media_costs,
         media_costs_by_row,
-        media_priors,
+        media_cost_priors,
+        learned_media_priors,
         media_names,
         extra_features_data,
         extra_features_names,
@@ -139,9 +144,13 @@ class InputData:
         :param media_data: 2-d numpy array of float64 media data values [time,channel]
         :param media_costs: 1-d numpy array of float64 total media costs [channel]
         :param media_costs_by_row: 2-d numpy array of float 64 media costs per day [time, channel]
-        :param media_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
+        :param media_cost_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
                              be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
                              it makes sense to use a different value as the prior.
+        :param learned_media_priors: 1-d array of float64 media prior [channel].  These priors will override the cost
+                             priors when provided (i.e. > 0.).  These may be informed by an experiment or
+                             an MMM run on an earlier period.  These values will be provided directly to
+                             LightweightMMM without any scaling.
         :param media_names: list of media channel names
         :param extra_features_data: 2-d numpy array of float64 extra feature values [time, channel]
         :param extra_features_names: list of extra feature names
@@ -154,7 +163,8 @@ class InputData:
             time_granularity=time_granularity,
             media_data=media_data,
             media_costs=media_costs,
-            media_priors=media_priors,
+            media_cost_priors=media_cost_priors,
+            learned_media_priors=learned_media_priors,
             media_names=media_names,
             extra_features_data=extra_features_data,
             extra_features_names=extra_features_names,
@@ -167,7 +177,8 @@ class InputData:
         self.media_data = media_data
         self.media_costs = media_costs
         self.media_costs_by_row = media_costs_by_row
-        self.media_priors = media_priors
+        self.media_cost_priors = media_cost_priors
+        self.learned_media_priors = learned_media_priors
         self.media_names = media_names
         self.extra_features_data = extra_features_data
         self.extra_features_names = extra_features_names
@@ -204,9 +215,12 @@ class InputData:
             summary_file.write("\nmedia_costs:\n")
             for idx, media_cost in enumerate(self.media_costs):
                 summary_file.write(f"media_costs[{idx}]={media_cost:,.2f}\n")
-            summary_file.write("\nmedia_priors:\n")
-            for idx, media_prior in enumerate(self.media_priors):
+            summary_file.write("\nmedia_cost_priors:\n")
+            for idx, media_prior in enumerate(self.media_cost_priors):
                 summary_file.write(f"media_priors[{idx}]={media_prior:,.2f}\n")
+            summary_file.write("\nmedia_cost_priors:\n")
+            for idx, learned_prior in enumerate(self.learned_media_priors):
+                summary_file.write(f"learned_media_priors[{idx}]={learned_prior:,.2f}\n")
             summary_file.write(f"\ntarget_name={self.target_name}\n")
             summary_file.write(f"\ntarget_is_log_scale={self.target_is_log_scale}\n")
 
@@ -267,7 +281,8 @@ class InputData:
             media_data=self.media_data.copy(),
             media_costs=self.media_costs.copy(),
             media_costs_by_row=self.media_costs_by_row.copy(),
-            media_priors=self.media_priors.copy(),
+            media_cost_priors=self.media_cost_priors.copy(),
+            learned_media_priors=self.learned_media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
             extra_features_names=extra_features_names,
@@ -344,7 +359,8 @@ class InputData:
             media_data=media_df_weekly.to_numpy(),
             media_costs=self.media_costs.copy(),
             media_costs_by_row=media_costs_df_weekly.to_numpy(),
-            media_priors=self.media_priors.copy(),
+            media_cost_priors=self.media_cost_priors.copy(),
+            learned_media_priors=self.learned_media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
             extra_features_names=self.extra_features_names.copy(),
@@ -366,7 +382,8 @@ class InputData:
             media_data=self.media_data.copy(),
             media_costs=self.media_costs.copy(),
             media_costs_by_row=self.media_costs_by_row.copy(),
-            media_priors=self.media_priors.copy(),
+            media_cost_priors=self.media_cost_priors.copy(),
+            learned_media_priors=self.learned_media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=self.extra_features_data.copy(),
             extra_features_names=self.extra_features_names.copy(),
@@ -425,15 +442,17 @@ class InputData:
         media_costs[channel_idx + 1] = media_costs_by_row_after_column.sum()
         media_costs[channel_idx + 2 :] = self.media_costs[channel_idx + 1 :]
 
-        media_priors = np.zeros(shape=(self.media_priors.shape[0] + 1,))
-        media_priors[:channel_idx] = self.media_priors[:channel_idx]
-        # artificially scale media_priors down by the percentage of observations that are included in the split
+        media_cost_priors = np.zeros(shape=(self.media_cost_priors.shape[0] + 1,))
+        media_cost_priors[:channel_idx] = self.media_cost_priors[:channel_idx]
+        # artificially scale media_cost_priors down by the percentage of observations that are included in the split
         # column.  This is technically incorrect, but since priors do not directly impact the results, presumably
         # good enough.
         split_point_pct = split_obs_idx / self.media_data.shape[0]
-        media_priors[channel_idx] = self.media_priors[channel_idx] * split_point_pct
-        media_priors[channel_idx + 1] = self.media_priors[channel_idx] * (1 - split_point_pct)
-        media_priors[channel_idx + 2 :] = self.media_priors[channel_idx + 1 :]
+        media_cost_priors[channel_idx] = self.media_cost_priors[channel_idx] * split_point_pct
+        media_cost_priors[channel_idx + 1] = self.media_cost_priors[channel_idx] * (
+            1 - split_point_pct
+        )
+        media_cost_priors[channel_idx + 2 :] = self.media_cost_priors[channel_idx + 1 :]
 
         return InputData(
             date_strs=self.date_strs.copy(),
@@ -441,7 +460,8 @@ class InputData:
             media_data=media_data,
             media_costs=media_costs,
             media_costs_by_row=media_costs_by_row,
-            media_priors=media_priors,
+            media_cost_priors=media_cost_priors,
+            learned_media_priors=self.learned_media_priors.copy(),
             media_names=media_names,
             extra_features_data=self.extra_features_data.copy(),
             extra_features_names=self.extra_features_names.copy(),

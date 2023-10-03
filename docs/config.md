@@ -18,6 +18,8 @@ To run MMM, you'll need to create a `yaml` config file with the following parame
 * `date_col`: (optional) name of the date column in your CSV.  Dates should be in ISO 8601 format (YYYY-MM-DD).  Defaults to "`date`".
 * `target_col`: name of the column with the target (output) metric.
 * `extra_features_cols`: (optional) list of extra feature columns.  Extra features are factors external to marketing that influence the target.
-* `media`: one block per media input metric to include in your model.  References a display name (used in charts) and column names for impressions and for spend.  Spend can be zero for non-paid marketing activities (e.g. email marketing), but when spend is zero a fixed prior should be set via `fixed_prior_value`.  Every column in the dataset should be mentioned in the config file; if you don't want to use a column in your model, add it to `ignore_cols`.
+* `media`: one block per media input metric to include in your model.  References a display name (used in charts) and column names for impressions and for spend.  Spend can be zero for non-paid marketing activities (e.g. email marketing), but when spend is zero a fixed prior should be set via `fixed_cost_prior`.  Finally, it is possible to incorporate learnings from a past model by passing a `learned_prior`.  This will be used as the scale of a `HalfNormal` distribution, so consult the appropriate distribution when setting.  
+
+Every column in the dataset should be mentioned in the config file; if you don't want to use a column in your model, add it to `ignore_cols`.
 
 For an example, see `examples/sample_config.yaml`.

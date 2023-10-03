@@ -249,7 +249,7 @@ def test_print_outliers(output_dir):
         media_data=np.column_stack((media1_values, media2_values, media3_values)),
         media_costs=np.array([0.5, 0.6, 0.7], dtype=np.float64),
         media_costs_by_row=np.ndarray(shape=(0, 3)),
-        media_priors=np.array([0.5, 0.6, 0.7], dtype=np.float64),
+        media_cost_priors=np.array([0.5, 0.6, 0.7], dtype=np.float64),
         media_names=np.array(["media1", "media2", "media3"]),
         extra_features_data=np.ndarray(shape=(0, 0)),
         extra_features_names=np.array([]),
