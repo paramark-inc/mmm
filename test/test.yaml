@@ -3,6 +3,7 @@ model_name: carryover
 
 number_warmup: 10
 number_samples: 10
+number_chains: 1
 
 seed: 1
 
