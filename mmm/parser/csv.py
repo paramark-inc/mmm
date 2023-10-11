@@ -71,14 +71,4 @@ def csv_to_df_generic(data_fname: str, config: dict) -> pd.DataFrame:
     """
     data_df = _parse_csv_shared(data_fname, config)
     data_df.index = pd.DatetimeIndex(pd.to_datetime(data_df.index, format="%Y-%m-%d"), freq="D")
-
-    # rename the columns in the dataframes from CSV column names to display name + "cost"/"volume"
-    rename_cols = {}
-    for i, media_config in enumerate(config.get("media", [])):
-        display_name = media_config.get("display_name")
-        impressions_col = media_config.get("impressions_col")
-        spend_col = media_config.get("spend_col")
-        rename_cols[spend_col] = f"{display_name} {constants.DATA_FRAME_COST_SUFFIX}"
-        rename_cols[impressions_col] = f"{display_name} {constants.DATA_FRAME_IMPRESSIONS_SUFFIX}"
-
-    return data_df.rename(columns=rename_cols)
+    return data_df
