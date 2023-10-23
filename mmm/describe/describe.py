@@ -400,7 +400,9 @@ def _dump_baseline_breakdown(
     baseline_breakdown_df.to_csv(os.path.join(results_dir, "baseline_breakdown.csv"))
 
 
-def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, results_dir):
+def describe_mmm_training(
+    mmm, input_data, data_to_fit, degrees_seasonality, results_dir, include_response_curves=False
+):
     """
     Plot and print diagnostic analyses of the MMM training data.
 
@@ -409,7 +411,10 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     :param data_to_fit: DataToFit instance
     :param degrees_seasonality: degrees of seasonality used for fitting
     :param results_dir: directory to write plot files to
-    :return:
+    :param include_response_curves: True to include response curves in the output, False otherwise.
+        This is off by default because it is quite slow and appears to leak memory.
+
+    :return: none
     """
     output_fname = os.path.join(results_dir, "model_coefficients.txt")
     with open(output_fname, "w") as f:
@@ -427,30 +432,31 @@ def describe_mmm_training(mmm, input_data, data_to_fit, degrees_seasonality, res
     costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
     )
-    num_pages = math.ceil(len(input_data.media_names) / 5)
-    fig = plot_response_curves(
-        media_mix_model=mmm,
-        media_scaler=data_to_fit.media_scaler,
-        target_scaler=data_to_fit.target_scaler,
-        figure_size=(8, 10 * num_pages),
-        costs_per_day=costs_per_day_unscaled,
-        percentage_add=0.0,
-        response_metric="target",
-    )
-    output_fname = os.path.join(results_dir, "response_curves_target.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+    if include_response_curves:
+        num_pages = math.ceil(len(input_data.media_names) / 5)
+        fig = plot_response_curves(
+            media_mix_model=mmm,
+            media_scaler=data_to_fit.media_scaler,
+            target_scaler=data_to_fit.target_scaler,
+            figure_size=(8, 10 * num_pages),
+            costs_per_day=costs_per_day_unscaled,
+            percentage_add=0.0,
+            response_metric="target",
+        )
+        output_fname = os.path.join(results_dir, "response_curves_target.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_response_curves(
-        media_mix_model=mmm,
-        media_scaler=data_to_fit.media_scaler,
-        target_scaler=data_to_fit.target_scaler,
-        figure_size=(8, 10 * num_pages),
-        costs_per_day=costs_per_day_unscaled,
-        percentage_add=0.0,
-        response_metric="cost_per_target",
-    )
-    output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_response_curves(
+            media_mix_model=mmm,
+            media_scaler=data_to_fit.media_scaler,
+            target_scaler=data_to_fit.target_scaler,
+            figure_size=(8, 10 * num_pages),
+            costs_per_day=costs_per_day_unscaled,
+            percentage_add=0.0,
+            response_metric="cost_per_target",
+        )
+        output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_prior_and_posterior(media_mix_model=mmm)
     output_fname = os.path.join(results_dir, "model_priors_and_posteriors.png")

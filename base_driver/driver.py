@@ -94,6 +94,7 @@ class MMMBaseDriver:
             data_to_fit=data_to_fit,
             degrees_seasonality=config["degrees_seasonality"],
             results_dir=results_dir,
+            include_response_curves=False,
         )
         describe_mmm_prediction(mmm=model, data_to_fit=data_to_fit, results_dir=results_dir)
 
