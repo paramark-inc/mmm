@@ -75,5 +75,9 @@ def csv_to_df_generic(
         DataFrame
     """
     data_df = _parse_csv_shared(data_fname, config, keep_ignore_cols)
+
+    # We set a freq of "D" here intentionally, so Pandas will raise an error if any days are
+    # missing in the input data.
     data_df.index = pd.DatetimeIndex(pd.to_datetime(data_df.index, format="%Y-%m-%d"), freq="D")
+
     return data_df
