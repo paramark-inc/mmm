@@ -60,6 +60,7 @@ def fit_lightweight_mmm(
         "number_chains": config.get("number_chains", 1),
         "number_warmup": config.get("number_warmup", 2000),
         "number_samples": config.get("number_samples", 2000),
+        "progress_bar": config.get("progress_bar", True),
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
