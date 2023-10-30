@@ -11,7 +11,7 @@ class ConfigTest(unittest.TestCase):
 
         raw_config, config = load_config(config_filename)
 
-        self.assertIn("\nweekday_seasonality: null\n", raw_config)
+        self.assertIn("\nraw_data_granularity: daily\n", raw_config)
 
         self.assertEqual(config["seed"], 1)
 

@@ -21,16 +21,9 @@ class EndToEndTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             model = fit_lightweight_mmm(
+                config=config,
                 data_to_fit=data_to_fit,
-                model_name=config["model_name"],
                 results_dir=tmpdirname,
-                degrees_seasonality=config["degrees_seasonality"],
-                weekday_seasonality=config["weekday_seasonality"],
-                number_warmup=config["number_warmup"],
-                number_samples=config["number_samples"],
-                number_chains=config["number_chains"],
-                seed=config.get("seed"),
-                custom_prior_config=config.get("custom_priors"),
             )
 
             # first verify model params

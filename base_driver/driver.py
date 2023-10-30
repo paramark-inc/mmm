@@ -58,24 +58,13 @@ class MMMBaseDriver:
     ) -> (DataToFit, LightweightMMM):
         data_to_fit = DataToFit.from_input_data(input_data=input_data_processed, config=config)
 
-        model_name = config["model_name"]
-        degrees_seasonality = config["degrees_seasonality"]
-
         if model_filename:
             model = load_model(model_filename=model_filename)
         else:
-            print(f"fitting a model for {model_name} degrees_seasonality={degrees_seasonality}")
             model = fit_lightweight_mmm(
+                config=config,
                 data_to_fit=data_to_fit,
-                model_name=model_name,
                 results_dir=results_dir,
-                degrees_seasonality=degrees_seasonality,
-                weekday_seasonality=config["weekday_seasonality"],
-                number_warmup=config["number_warmup"],
-                number_samples=config["number_samples"],
-                number_chains=config["number_chains"],
-                seed=config.get("seed"),
-                custom_prior_config=config.get("custom_priors"),
             )
 
         return data_to_fit, model

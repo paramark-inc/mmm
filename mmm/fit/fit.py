@@ -2,6 +2,7 @@ from impl.lightweight_mmm.lightweight_mmm import lightweight_mmm
 from impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from mmm.constants import constants
+from mmm.data import DataToFit
 
 import jax.numpy as jnp
 import numpyro
@@ -11,37 +12,20 @@ import yaml
 
 # noinspection GrazieInspection
 def fit_lightweight_mmm(
-    data_to_fit,
-    model_name,
-    results_dir,
-    degrees_seasonality=2,
-    weekday_seasonality=None,
-    number_warmup=2000,
-    number_samples=2000,
-    number_chains=1,
-    seed=None,
-    custom_prior_config=None,
+    config: dict,
+    data_to_fit: DataToFit,
+    results_dir: str,
 ):
     """
     fit a lightweight mmm model to input_data
 
+    :param config: config object loaded from YAML file
     :param data_to_fit: DataToFit instance
-    :param model_name: name of transform to perform (FIT_LIGHTWEIGHT_MMM_MODELNAME_XXX)
     :param results_dir: directory to write log output to
-    :param degrees_seasonality: degrees of seasonality to pass through to lightweightMMM
-    :param weekday_seasonality: if None, we will derive this parameter from the time_granularity;
-                                otherwise, use the value provided.  For daily data, passing "False" will cause the
-                                model to omit the daily coefficients, which can be preferable if you are seeing too
-                                much day to day swing in the results.
-
-                                Do not pass a value if you have weekly data.
-    :param number_warmup to pass through to lightweightMMM.
-    :param number_samples to pass through to lightweightMMM.
-    :param number_chains to pass through to lightweightMMM.  Cannot be more than the number of CPUs
-           on the system.
     :return: lightweightMMM instance
     """
-    assert model_name in (
+    model_name = config.get("model_name")
+    assert model_name in (  # this setting is not optional
         constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_ADSTOCK,
         constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_HILL_ADSTOCK,
         constants.FIT_LIGHTWEIGHT_MMM_MODELNAME_CARRYOVER,
@@ -69,12 +53,13 @@ def fit_lightweight_mmm(
         print(f"setting learned media priors for {learned_media_priors_count} channels")
 
     fit_params = {
-        "custom_priors": custom_prior_config,
-        "degrees_seasonality": degrees_seasonality,
+        "custom_priors": config.get("custom_priors"),
+        "degrees_seasonality": config.get("degrees_seasonality", 2),
         "media_prior": media_priors,
         "model_name": model_name,
-        "number_warmup": number_warmup,
-        "number_samples": number_samples,
+        "number_chains": config.get("number_chains", 1),
+        "number_warmup": config.get("number_warmup", 2000),
+        "number_samples": config.get("number_samples", 2000),
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
@@ -82,19 +67,21 @@ def fit_lightweight_mmm(
         365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52
     )
 
-    if weekday_seasonality is None:
+    if config.get("weekday_seasonality") is None:
         fit_params["weekday_seasonality"] = (
             True if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else False
         )
     else:
-        fit_params["weekday_seasonality"] = weekday_seasonality
+        fit_params["weekday_seasonality"] = config.get("weekday_seasonality")
 
-    fit_params["number_chains"] = number_chains
+    print(
+        f"fitting a model for {fit_params['model_name']} degrees_seasonality={fit_params['degrees_seasonality']}"
+    )
 
     # manually generate a seed in the same way as lightweight mmm's
     # fit(), and store it for future reproducibility
-    if seed is not None:
-        fit_params["seed"] = seed
+    if config.get("seed") is not None:
+        fit_params["seed"] = config.get("seed")
     else:
         fit_params["seed"] = get_time_seed()
 
@@ -102,11 +89,11 @@ def fit_lightweight_mmm(
         yaml.dump(fit_params, output_file, default_flow_style=False)
 
     custom_priors = None
-    if custom_prior_config is not None:
+    if fit_params["custom_priors"] is not None:
         custom_priors = {}
-        print(f"setting custom_priors for {', '.join(custom_prior_config.keys())}")
+        print(f"setting custom_priors for {', '.join(fit_params['custom_priors'].keys())}")
 
-        for name, definition in custom_prior_config.items():
+        for name, definition in fit_params["custom_priors"].items():
             if definition["type"] == "halfnormal":
                 custom_priors[name] = numpyro.distributions.HalfNormal(definition["scale"])
             elif definition["type"] == "normal":

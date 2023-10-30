@@ -3,12 +3,9 @@ model_name: carryover
 
 number_warmup: 10
 number_samples: 10
-number_chains: 1
-
+progress_bar: false
 seed: 1
-
 degrees_seasonality: 1
-weekday_seasonality: null
 
 log_scale_target: false
 
