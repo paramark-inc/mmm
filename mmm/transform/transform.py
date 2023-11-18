@@ -43,6 +43,7 @@ def transform_input_generic(data_dict: dict, config: dict):
 
     metric_data = data_dict[constants.KEY_METRICS]
     column_names = set(metric_data.keys())
+    column_names_already_seen = set()
 
     media_names = []
     num_media_channels = len(config.get("media", []))
@@ -99,11 +100,17 @@ def transform_input_generic(data_dict: dict, config: dict):
 
         media_names.append(display_name)
 
-        column_names.remove(impressions_col)
+        # Allow reusing column names so only attempt to remove a column from the set if it
+        # has not already been seen
+        if impressions_col not in column_names_already_seen:
+            column_names.remove(impressions_col)
+            column_names_already_seen.add(impressions_col)
+
         # if we are using spend as the input metric, the spend column is the same as the
         # impressions column, so don't try to remove it twice.
-        if impressions_col != spend_col:
+        if impressions_col != spend_col and spend_col not in column_names_already_seen:
             column_names.remove(spend_col)
+            column_names_already_seen.add(spend_col)
 
     # after copying spend/impression data for each media channel, loop over
     # the remaining columns to populate target and extra features
