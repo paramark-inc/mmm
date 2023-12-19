@@ -69,10 +69,10 @@ class DataToFit:
         extra_features_scaler.fit(input_data.extra_features_data)
         target_scaler.fit(input_data.target_data)
 
-        # note that we use media_priors to fit the scaler, and then apply the scaling to media_costs
-        # and media_costs_by_row in addition to media_priors.  Ordinarily it would be better to have
-        # a separate scaler for each, but since only media_priors is used for fitting the MMM model,
-        # this achieves the same result.
+        # note that we use media_cost_priors to fit the scaler, and then apply the scaling to
+        # media_costs and media_costs_by_row in addition to media_cost_priors.  Ordinarily it
+        # would be better to have a separate scaler for each, but since only media_cost_priors
+        # is used for fitting the MMM model, this achieves the same result.
         media_cost_scaler.fit(input_data.media_cost_priors)
 
         media_data_train_scaled = media_scaler.transform(media_data_train)
