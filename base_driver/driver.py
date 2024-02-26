@@ -1,4 +1,5 @@
-from .config import git_sha, load_config
+from .config import load_config
+from .git import git_sha
 
 from mmm.data import DataToFit, InputData
 from mmm.describe.describe import (

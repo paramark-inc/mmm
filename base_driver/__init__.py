@@ -1,2 +1,3 @@
-from .config import git_sha, load_config
+from .config import load_config
 from .driver import MMMBaseDriver
+from .git import git_sha

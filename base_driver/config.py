@@ -1,4 +1,3 @@
-import git
 import logging
 import sys
 import yaml
@@ -26,11 +25,3 @@ def load_config(config_file: str) -> Tuple[bytes, dict]:
     except FileNotFoundError:
         logging.error(f"Couldn't load config file: {config_file}")
         sys.exit(1)
-
-
-def git_sha() -> str:
-    try:
-        repo = git.Repo(search_parent_directories=True)
-        return repo.head.object.hexsha
-    except ValueError:
-        logging.error("Couldn't get git sha, check directory ownership and safe.directory config")
