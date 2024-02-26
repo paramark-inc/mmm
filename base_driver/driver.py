@@ -10,7 +10,7 @@ from mmm.describe.describe import (
 )
 from mmm.fit.fit import fit_lightweight_mmm
 from mmm.parser.csv import parse_csv_generic
-from mmm.store.store import make_results_dir, load_model, save_model
+from mmm.store import make_results_dir, load_model, save_model
 from mmm.transform.transform import transform_input_generic
 
 from impl.lightweight_mmm.lightweight_mmm.lightweight_mmm import LightweightMMM
