@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pandas as pd
 import os
 import lightweight_mmm.lightweight_mmm
+import json
 
 from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
@@ -467,12 +468,32 @@ def describe_mmm_training(
     )
     cost_per_target_hat = 1.0 / roi_hat
 
+    media_effect_df = get_media_effect_df(data_to_fit, media_effect_hat)
+
     _dump_posterior_metrics(
         results_dir,
-        get_media_effect_df(data_to_fit, media_effect_hat),
+        media_effect_df,
         get_roi_df(data_to_fit, media_effect_hat, roi_hat),
         get_cost_per_target_df(data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat),
     )
+
+    try:
+        medians = media_effect_df["median"]
+        blended_median = medians.get("blended")
+        top_medians = medians.drop("blended").sort_values(ascending=False).head(3)
+
+        summary = {
+            "media_effect": {
+                "blended_median": float(blended_median),
+                "top_median": top_medians.to_dict()
+            }
+        }
+
+        summary_file = open(os.path.join(results_dir, "summary.json"), "w")
+        summary_file.write(json.dumps(summary, indent=2))
+        summary_file.close()
+    except Exception as e:
+        print("Unable to generate summary file. Error: ", e)
 
     fig = plot_bars_media_metrics(
         metric=media_effect_hat,
