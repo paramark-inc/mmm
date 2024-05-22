@@ -477,23 +477,20 @@ def describe_mmm_training(
         get_cost_per_target_df(data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat),
     )
 
-    try:
-        medians = media_effect_df["median"]
-        blended_median = medians.get("blended")
-        top_medians = medians.drop("blended").sort_values(ascending=False).head(3)
+    medians = media_effect_df["median"]
+    blended_median = medians.get("blended")
+    top_medians = medians.drop("blended").sort_values(ascending=False).head(3)
 
-        summary = {
-            "media_effect": {
-                "blended_median": float(blended_median),
-                "top_median": top_medians.to_dict()
-            }
+    summary = {
+        "media_effect": {
+            "blended_median": float(blended_median),
+            "top_median": top_medians.to_dict()
         }
+    }
 
-        summary_file = open(os.path.join(results_dir, "summary.json"), "w")
-        summary_file.write(json.dumps(summary, indent=2))
-        summary_file.close()
-    except Exception as e:
-        print("Unable to generate summary file. Error: ", e)
+    summary_file = open(os.path.join(results_dir, "summary.json"), "w")
+    summary_file.write(json.dumps(summary, indent=2))
+    summary_file.close()
 
     fig = plot_bars_media_metrics(
         metric=media_effect_hat,
