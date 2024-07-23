@@ -331,12 +331,21 @@ def get_baseline_breakdown_df(
 
     columns += data_to_fit.extra_features_names
 
-    frequency = 365 if input_data.time_granularity == constants.GRANULARITY_DAILY else 52
+    if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
+        seasonality_frequency = 365
+    elif data_to_fit.time_granularity == constants.GRANULARITY_WEEKLY:
+        seasonality_frequency = 52
+    elif data_to_fit.time_granularity == constants.GRANULARITY_TWO_WEEKS:
+        seasonality_frequency = 26
+    elif data_to_fit.time_granularity == constants.GRANULARITY_FOUR_WEEKS:
+        seasonality_frequency = 13
+    else:
+        assert False
 
     seasonality_by_obs = calculate_seasonality(
         number_periods=num_observations,
         degrees=degrees_seasonality,
-        frequency=frequency,
+        frequency=seasonality_frequency,
         gamma_seasonality=gamma_seasonality,
     )
 
@@ -484,7 +493,7 @@ def describe_mmm_training(
     summary = {
         "media_effect": {
             "blended_median": float(blended_median),
-            "top_median": top_medians.to_dict()
+            "top_median": top_medians.to_dict(),
         }
     }
 

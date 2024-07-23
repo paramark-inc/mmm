@@ -64,9 +64,18 @@ def fit_lightweight_mmm(
         "target_is_log_scale": data_to_fit.target_is_log_scale,
     }
 
-    fit_params["seasonality_frequency"] = (
-        365 if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else 52
-    )
+    if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
+        seasonality_frequency = 365
+    elif data_to_fit.time_granularity == constants.GRANULARITY_WEEKLY:
+        seasonality_frequency = 52
+    elif data_to_fit.time_granularity == constants.GRANULARITY_TWO_WEEKS:
+        seasonality_frequency = 26
+    elif data_to_fit.time_granularity == constants.GRANULARITY_FOUR_WEEKS:
+        seasonality_frequency = 13
+    else:
+        assert False
+
+    fit_params["seasonality_frequency"] = seasonality_frequency
 
     if config.get("weekday_seasonality") is None:
         fit_params["weekday_seasonality"] = (

@@ -65,10 +65,10 @@ class InputDataTest(unittest.TestCase):
 
         self.assertIsInstance(input_data, InputData)
 
-    def test_clone_as_weekly(self):
+    def test_clone_and_resample(self):
         # un-even number of observations
         input_data = InputDataTest.generate_test_input_data(observations=100)
-        input_data_weekly = input_data.clone_as_weekly()
+        input_data_weekly = input_data.clone_and_resample(constants.GRANULARITY_WEEKLY)
 
         self.assertEqual(14, input_data_weekly.date_strs.shape[0])
         self.assertEqual(constants.GRANULARITY_WEEKLY, input_data_weekly.time_granularity)
@@ -96,7 +96,7 @@ class InputDataTest(unittest.TestCase):
 
         # even number of observations
         input_data = InputDataTest.generate_test_input_data(observations=98)
-        input_data_weekly = input_data.clone_as_weekly()
+        input_data_weekly = input_data.clone_and_resample(constants.GRANULARITY_WEEKLY)
 
         self.assertEqual(14, input_data_weekly.date_strs.shape[0])
         self.assertEqual(constants.GRANULARITY_WEEKLY, input_data_weekly.time_granularity)

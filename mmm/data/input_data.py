@@ -34,6 +34,8 @@ class InputData:
         assert time_granularity in (
             constants.GRANULARITY_DAILY,
             constants.GRANULARITY_WEEKLY,
+            constants.GRANULARITY_TWO_WEEKS,
+            constants.GRANULARITY_FOUR_WEEKS,
         ), f"{time_granularity}"
 
         assert 2 == media_data.ndim, f"{media_data.ndim}"
@@ -300,72 +302,110 @@ class InputData:
         """
         return idx // 7
 
-    def clone_as_weekly(self):
+    @staticmethod
+    def _group_by_two_weeks(idx):
         """
-        Compress from daily form to weekly form.  The data will be grouped into groups of 7 rows, starting with the
-        first 7 rows, and discarding the last group of less than 7 rows.  This means that the groups are aligned to
-        the day of week for the first row, not Sunday.
-
-        :return: new InputData instance, with weekly data
+        pandas groupby callback to use for grouping rows into groups of 14
+        :param idx: row index
+        :return: group index
         """
-        assert self.time_granularity == constants.GRANULARITY_DAILY
+        return idx // 14
 
-        # we need to trim one partial week off the end if the data is not an even number of weeks
-        needs_cut_last = False if self.media_data.shape[0] % 7 == 0 else True
+    @staticmethod
+    def _group_by_four_weeks(idx):
+        """
+        pandas groupby callback to use for grouping rows into groups of 28
+        :param idx: row index
+        :return: group index
+        """
+        return idx // 28
 
-        date_strs_weekly = self.date_strs.copy()[::7]
+    def clone_and_resample(self, time_granularity: str = constants.GRANULARITY_WEEKLY):
+        """
+        Clone and resample daily data into groups of N weeks.
+
+        The data will be grouped into groups of N*7 rows, starting with the first 7 rows, and
+        discarding the last group of less than N*7 rows.  This means that the groups are aligned
+        to the day of week for the first row, not necessarily Sunday.  So the caller should ensure
+        that the first day of the dataset is a Sunday.
+
+        Args:
+            time_granularity: granularity we should resample to
+
+        Returns:
+            new InputData instance, with resampled data.
+
+        """
+        assert (
+            self.time_granularity == constants.GRANULARITY_DAILY
+        ), "InputData has already been resampled"
+
+        if time_granularity == constants.GRANULARITY_WEEKLY:
+            group_days = 7
+            group_func = InputData._group_by_week
+        elif time_granularity == constants.GRANULARITY_TWO_WEEKS:
+            group_days = 14
+            group_func = InputData._group_by_two_weeks
+        elif time_granularity == constants.GRANULARITY_FOUR_WEEKS:
+            group_days = 28
+            group_func = InputData._group_by_four_weeks
+        else:
+            raise ValueError(f"Unexpecteed value for time_granularity={time_granularity}")
+
+        # we need to trim one partial week off the end if the data is not an even number of N weeks
+        needs_cut_last = False if self.media_data.shape[0] % group_days == 0 else True
+
+        date_strs_resampled = self.date_strs.copy()[::group_days]
 
         media_data_dict = {
             name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)
         }
         media_df_daily = pd.DataFrame(data=media_data_dict)
-        media_df_weekly = media_df_daily.groupby(by=InputData._group_by_week).sum()
+        media_df_resampled = media_df_daily.groupby(by=group_func).sum()
 
         media_costs_data_dict = {
             name: self.media_costs_by_row[:, idx] for idx, name in enumerate(self.media_names)
         }
         media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
-        media_costs_df_weekly = media_costs_df_daily.groupby(by=InputData._group_by_week).sum()
+        media_costs_df_resampled = media_costs_df_daily.groupby(by=group_func).sum()
 
         extra_features_data_dict = {
             name: self.extra_features_data[:, idx]
             for idx, name in enumerate(self.extra_features_names)
         }
         extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
-        extra_features_df_weekly = extra_features_df_daily.groupby(
-            by=InputData._group_by_week
-        ).sum()
+        extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
 
         target_data_dict = {self.target_name: self.target_data}
         target_df_daily = pd.DataFrame(data=target_data_dict)
-        target_df_weekly = target_df_daily.groupby(by=InputData._group_by_week).sum()
+        target_df_resampled = target_df_daily.groupby(by=group_func).sum()
 
         if needs_cut_last:
-            date_strs_weekly = date_strs_weekly[:-1]
-            media_df_weekly = media_df_weekly[:-1]
-            media_costs_df_weekly = media_costs_df_weekly[:-1]
-            extra_features_df_weekly = extra_features_df_weekly[:-1]
-            target_df_weekly = target_df_weekly[:-1]
+            date_strs_resampled = date_strs_resampled[:-1]
+            media_df_resampled = media_df_resampled[:-1]
+            media_costs_df_resampled = media_costs_df_resampled[:-1]
+            extra_features_df_resampled = extra_features_df_resampled[:-1]
+            target_df_resampled = target_df_resampled[:-1]
 
         extra_features_data = (
-            extra_features_df_weekly.to_numpy()
-            if extra_features_df_weekly.shape[1]
-            else np.ndarray(shape=(media_df_weekly.shape[0], 0), dtype=np.float64)
+            extra_features_df_resampled.to_numpy()
+            if extra_features_df_resampled.shape[1]
+            else np.ndarray(shape=(media_df_resampled.shape[0], 0), dtype=np.float64)
         )
 
         return InputData(
-            date_strs=date_strs_weekly,
-            time_granularity=constants.GRANULARITY_WEEKLY,
-            media_data=media_df_weekly.to_numpy(),
+            date_strs=date_strs_resampled,
+            time_granularity=time_granularity,
+            media_data=media_df_resampled.to_numpy(),
             media_costs=self.media_costs.copy(),
-            media_costs_by_row=media_costs_df_weekly.to_numpy(),
+            media_costs_by_row=media_costs_df_resampled.to_numpy(),
             media_cost_priors=self.media_cost_priors.copy(),
             learned_media_priors=self.learned_media_priors.copy(),
             media_names=self.media_names.copy(),
             extra_features_data=extra_features_data,
             extra_features_names=self.extra_features_names.copy(),
             # DataFrame returns a 2D array even when there's only one column
-            target_data=target_df_weekly.to_numpy()[:, 0],
+            target_data=target_df_resampled.to_numpy()[:, 0],
             target_is_log_scale=self.target_is_log_scale,
             target_name=self.target_name,
         )

@@ -310,11 +310,22 @@ class DataToFit:
             observation_data_by_column_name[self.target_name] = target_data_scaled
 
         # TODO push conversion to datetime upstream so that it is common across all data sets
+        if self.time_granularity == constants.GRANULARITY_WEEKLY:
+            freq = "W"
+        elif self.time_granularity == constants.GRANULARITY_TWO_WEEKS:
+            freq = "2W"
+        elif self.time_granularity == constants.GRANULARITY_FOUR_WEEKS:
+            freq = "4W"
+        elif self.time_granularity == constants.GRANULARITY_DAILY:
+            freq = "D"
+        else:
+            assert False
+
         per_observation_df = pd.DataFrame(
             data=observation_data_by_column_name,
             index=pd.DatetimeIndex(
                 pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
-                freq="W" if self.time_granularity == constants.GRANULARITY_WEEKLY else "D",
+                freq=freq,
             ),
             dtype=np.float64,
             copy=True,

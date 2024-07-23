@@ -6,6 +6,8 @@ KEY_OBSERVATIONS = "observations"
 # time series granularity
 GRANULARITY_DAILY = "daily"
 GRANULARITY_WEEKLY = "weekly"
+GRANULARITY_TWO_WEEKS = "two_weeks"
+GRANULARITY_FOUR_WEEKS = "four_weeks"
 
 # values for fit_lightweight_mmm 'transform_name'
 FIT_LIGHTWEIGHT_MMM_MODELNAME_HILL_ADSTOCK = "hill_adstock"
