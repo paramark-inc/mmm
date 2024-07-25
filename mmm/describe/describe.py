@@ -76,6 +76,50 @@ def _compute_blended_media_effect_hat(media_effect_hat: np.ndarray) -> np.ndarra
     return blended_media_effect_hat
 
 
+def _get_summary_df(
+    data_to_fit: DataToFit, media_distributions: np.ndarray, blended_distribution: np.ndarray
+) -> pd.DataFrame:
+    """
+    Get a summary dataframe containing credibility interval quantiles, mean, and median values 
+    for each media as well as the blended media value.
+
+    Args:
+        data_to_fit: DataToFit instance
+        media_distributions: array of media values, with axes:
+            0: sample
+            1: channel
+        blended_distribution: array of blended media values, with axes:
+            0: sample
+
+    Returns:
+        Dataframe with credibility interval quantiles, mean, and median values
+    """
+    ci_quantiles = data_to_fit.get_ci_quantiles()
+
+    columns = [str(x) for x in ci_quantiles]
+    summary_df = pd.DataFrame(
+        index=["blended"] + data_to_fit.media_names, columns=columns + ["median", "mean"]
+    )
+
+    quantiles = np.quantile(blended_distribution, ci_quantiles)
+
+    for idx, column in enumerate(columns):
+        summary_df.loc["blended", column] = quantiles[idx]
+    summary_df.loc["blended", "median"] = np.median(blended_distribution)
+    summary_df.loc["blended", "mean"] = np.mean(blended_distribution)
+
+    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
+        quantiles = np.quantile(media_distributions[:, media_idx], ci_quantiles)
+        media_name = data_to_fit.media_names[media_idx]
+
+        for idx, column in enumerate(columns):
+            summary_df.loc[media_name, column] = quantiles[idx]
+        summary_df.loc[media_name, "median"] = np.median(media_distributions[:, media_idx])
+        summary_df.loc[media_name, "mean"] = np.mean(media_distributions[:, media_idx])
+
+    return summary_df
+
+
 def get_media_effect_df(data_to_fit: DataToFit, media_effect_hat: np.ndarray) -> pd.DataFrame:
     """
     Build and return a dataframe of media effect values.
@@ -89,29 +133,10 @@ def get_media_effect_df(data_to_fit: DataToFit, media_effect_hat: np.ndarray) ->
     Returns:
         DataFrame of media effect values
     """
-    blended_media_effect_hat = _compute_blended_media_effect_hat(media_effect_hat)
-    blended_media_effect_quantiles = np.quantile(blended_media_effect_hat, [0.05, 0.95])
 
-    media_effect_df = pd.DataFrame(
-        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
+    return _get_summary_df(
+        data_to_fit, media_effect_hat, _compute_blended_media_effect_hat(media_effect_hat)
     )
-
-    media_effect_df.loc["blended", "0.05"] = blended_media_effect_quantiles[0]
-    media_effect_df.loc["blended", "0.95"] = blended_media_effect_quantiles[1]
-    media_effect_df.loc["blended", "median"] = np.median(blended_media_effect_hat)
-    media_effect_df.loc["blended", "mean"] = np.mean(blended_media_effect_hat)
-
-    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-        quantiles = np.quantile(media_effect_hat[:, media_idx], [0.05, 0.95])
-        mean = np.mean(media_effect_hat[:, media_idx])
-        median = np.median(media_effect_hat[:, media_idx])
-        media_name = data_to_fit.media_names[media_idx]
-        media_effect_df.loc[media_name, "0.05"] = quantiles[0]
-        media_effect_df.loc[media_name, "0.95"] = quantiles[1]
-        media_effect_df.loc[media_name, "median"] = median
-        media_effect_df.loc[media_name, "mean"] = mean
-
-    return media_effect_df
 
 
 def _compute_blended_roi_hat(
@@ -171,29 +196,8 @@ def get_roi_df(
     Returns:
         DataFrame of ROI values
     """
-    blended_roi_hat = _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
-    blended_roi_quantiles = np.quantile(blended_roi_hat, [0.05, 0.95])
 
-    roi_df = pd.DataFrame(
-        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
-    )
-
-    roi_df.loc["blended", "0.05"] = blended_roi_quantiles[0]
-    roi_df.loc["blended", "0.95"] = blended_roi_quantiles[1]
-    roi_df.loc["blended", "median"] = np.median(blended_roi_hat)
-    roi_df.loc["blended", "mean"] = np.mean(blended_roi_hat)
-
-    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-        quantiles = np.quantile(roi_hat[:, media_idx], [0.05, 0.95])
-        mean = np.mean(roi_hat[:, media_idx])
-        median = np.median(roi_hat[:, media_idx])
-        media_name = data_to_fit.media_names[media_idx]
-        roi_df.loc[media_name, "0.05"] = quantiles[0]
-        roi_df.loc[media_name, "0.95"] = quantiles[1]
-        roi_df.loc[media_name, "median"] = median
-        roi_df.loc[media_name, "mean"] = mean
-
-    return roi_df
+    return _get_summary_df(data_to_fit, roi_hat, _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat))
 
 
 def _compute_blended_cost_per_target_hat(
@@ -243,32 +247,12 @@ def get_cost_per_target_df(
     Returns:
         DataFrame of cost per target values
     """
-    blended_cost_per_target_hat = _compute_blended_cost_per_target_hat(
-        data_to_fit, media_effect_hat, roi_hat
+
+    return _get_summary_df(
+        data_to_fit,
+        cost_per_target_hat,
+        _compute_blended_cost_per_target_hat(data_to_fit, media_effect_hat, roi_hat),
     )
-    blended_cost_per_target_quantiles = np.quantile(blended_cost_per_target_hat, [0.05, 0.95])
-
-    cost_per_target_df = pd.DataFrame(
-        index=["blended"] + data_to_fit.media_names, columns=["0.05", "0.95", "median", "mean"]
-    )
-
-    cost_per_target_df.loc["blended", "0.05"] = blended_cost_per_target_quantiles[0]
-    cost_per_target_df.loc["blended", "0.95"] = blended_cost_per_target_quantiles[1]
-    cost_per_target_df.loc["blended", "median"] = np.median(blended_cost_per_target_hat)
-    cost_per_target_df.loc["blended", "mean"] = np.mean(blended_cost_per_target_hat)
-
-    for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-        quantiles = np.quantile(cost_per_target_hat[:, media_idx], [0.05, 0.95])
-        mean = np.mean(cost_per_target_hat[:, media_idx])
-        median = np.median(cost_per_target_hat[:, media_idx])
-        media_name = data_to_fit.media_names[media_idx]
-        cost_per_target_df.loc[media_name, "0.05"] = quantiles[0]
-        cost_per_target_df.loc[media_name, "0.95"] = quantiles[1]
-        cost_per_target_df.loc[media_name, "median"] = median
-        cost_per_target_df.loc[media_name, "mean"] = mean
-
-    return cost_per_target_df
-
 
 def _dump_posterior_metrics(
     results_dir: str,
@@ -429,13 +413,14 @@ def describe_mmm_training(
     output_fname = os.path.join(results_dir, "model_coefficients.txt")
     with open(output_fname, "w") as f:
         with redirect_stdout(f):
-            mmm.print_summary()
+            mmm._mcmc.print_summary(prob=data_to_fit.credibility_interval)
 
     fig = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
     output_fname = os.path.join(results_dir, "model_fit_in_sample.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names)
+    ci_lower_quantile, ci_upper_quantile = data_to_fit.get_ci_quantiles()
+    fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names, quantiles=[ci_lower_quantile, 0.5, ci_upper_quantile])
     output_fname = os.path.join(results_dir, "model_media_posteriors.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
@@ -505,6 +490,7 @@ def describe_mmm_training(
         metric=media_effect_hat,
         metric_name="contribution percentage",
         channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
         bar_height="mean",
     )
     output_fname = os.path.join(results_dir, "media_contribution_mean.png")
@@ -514,13 +500,17 @@ def describe_mmm_training(
         metric=media_effect_hat,
         metric_name="contribution percentage",
         channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
         bar_height="median",
     )
     output_fname = os.path.join(results_dir, "media_contribution_median.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
-        metric=roi_hat, metric_name="ROI", channel_names=data_to_fit.media_names, bar_height="mean"
+        metric=roi_hat, metric_name="ROI",
+        channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
+        bar_height="mean"
     )
     output_fname = os.path.join(results_dir, "media_roi_mean.png")
     fig.savefig(output_fname, bbox_inches="tight")
@@ -529,6 +519,7 @@ def describe_mmm_training(
         metric=roi_hat,
         metric_name="ROI",
         channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
         bar_height="median",
     )
     output_fname = os.path.join(results_dir, "media_roi_median.png")
@@ -538,6 +529,7 @@ def describe_mmm_training(
         metric=cost_per_target_hat,
         metric_name="cost per target",
         channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
         bar_height="mean",
     )
     output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
@@ -547,6 +539,7 @@ def describe_mmm_training(
         metric=cost_per_target_hat,
         metric_name="cost per target",
         channel_names=data_to_fit.media_names,
+        interval_mid_range=data_to_fit.credibility_interval,
         bar_height="median",
     )
     output_fname = os.path.join(results_dir, "media_cost_per_target_median.png")

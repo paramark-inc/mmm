@@ -93,6 +93,8 @@ class DataToFit:
         media_costs_by_row_train_scaled = media_cost_scaler.transform(media_costs_by_row_train)
         media_costs_by_row_test_scaled = media_cost_scaler.transform(media_costs_by_row_test)
 
+        credibility_interval = config.get("credibility_interval", 0.9)
+
         return DataToFit(
             date_strs=input_data.date_strs,
             time_granularity=input_data.time_granularity,
@@ -116,6 +118,7 @@ class DataToFit:
             target_is_log_scale=input_data.target_is_log_scale,
             target_scaler=target_scaler,
             target_name=input_data.target_name,
+            credibility_interval=credibility_interval
         )
 
     @staticmethod
@@ -173,6 +176,7 @@ class DataToFit:
         target_is_log_scale,
         target_scaler,
         target_name,
+        credibility_interval = 0.9,
     ):
         self.date_strs = date_strs
         self.time_granularity = time_granularity
@@ -196,6 +200,20 @@ class DataToFit:
         self.target_is_log_scale = target_is_log_scale
         self.target_scaler = target_scaler
         self.target_name = target_name
+        self.credibility_interval = credibility_interval
+
+    def get_ci_quantiles(self) -> tuple[float, float]:
+        """
+        Get lower and upper quantiles that covers the credibility interval.
+
+        Returns:
+            Tuple with two numbers, the lower and upper quantile.
+            
+        """
+        
+        half = self.credibility_interval / 2
+        # Rounding to workaround floating number precision issue
+        return (round(0.5 - half, 2), round(0.5 + half, 2))
 
     def to_dict(self):
         return {
@@ -233,6 +251,7 @@ class DataToFit:
                 "target_name": self.target_name,
                 "target_is_log_scale": self.target_is_log_scale,
                 "time_granularity": self.time_granularity,
+                "credibility_interval": self.credibility_interval,
             },
         }
 
