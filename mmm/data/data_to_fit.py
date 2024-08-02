@@ -118,7 +118,7 @@ class DataToFit:
             target_is_log_scale=input_data.target_is_log_scale,
             target_scaler=target_scaler,
             target_name=input_data.target_name,
-            credibility_interval=credibility_interval
+            credibility_interval=credibility_interval,
         )
 
     @staticmethod
@@ -176,7 +176,7 @@ class DataToFit:
         target_is_log_scale,
         target_scaler,
         target_name,
-        credibility_interval = 0.9,
+        credibility_interval=0.9,
     ):
         self.date_strs = date_strs
         self.time_granularity = time_granularity
@@ -208,9 +208,9 @@ class DataToFit:
 
         Returns:
             Tuple with two numbers, the lower and upper quantile.
-            
+
         """
-        
+
         half = self.credibility_interval / 2
         # Rounding to workaround floating number precision issue
         return (round(0.5 - half, 2), round(0.5 + half, 2))
@@ -322,9 +322,9 @@ class DataToFit:
             target_data_scaled = self.target_train_scaled
 
         if unscaled:
-            observation_data_by_column_name[
-                self.target_name
-            ] = self.target_scaler.inverse_transform(target_data_scaled)
+            observation_data_by_column_name[self.target_name] = (
+                self.target_scaler.inverse_transform(target_data_scaled)
+            )
         else:
             observation_data_by_column_name[self.target_name] = target_data_scaled
 

@@ -80,7 +80,7 @@ def _get_summary_df(
     data_to_fit: DataToFit, media_distributions: np.ndarray, blended_distribution: np.ndarray
 ) -> pd.DataFrame:
     """
-    Get a summary dataframe containing credibility interval quantiles, mean, and median values 
+    Get a summary dataframe containing credibility interval quantiles, mean, and median values
     for each media as well as the blended media value.
 
     Args:
@@ -93,6 +93,9 @@ def _get_summary_df(
 
     Returns:
         Dataframe with credibility interval quantiles, mean, and median values
+        Axes:
+            0: channel
+            1: <ci_lower_quantile>, <ci_upper_quantile>, median, mean
     """
     ci_quantiles = data_to_fit.get_ci_quantiles()
 
@@ -197,7 +200,9 @@ def get_roi_df(
         DataFrame of ROI values
     """
 
-    return _get_summary_df(data_to_fit, roi_hat, _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat))
+    return _get_summary_df(
+        data_to_fit, roi_hat, _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
+    )
 
 
 def _compute_blended_cost_per_target_hat(
@@ -253,6 +258,7 @@ def get_cost_per_target_df(
         cost_per_target_hat,
         _compute_blended_cost_per_target_hat(data_to_fit, media_effect_hat, roi_hat),
     )
+
 
 def _dump_posterior_metrics(
     results_dir: str,
@@ -420,7 +426,11 @@ def describe_mmm_training(
     fig.savefig(output_fname, bbox_inches="tight")
 
     ci_lower_quantile, ci_upper_quantile = data_to_fit.get_ci_quantiles()
-    fig = plot_media_channel_posteriors(media_mix_model=mmm, channel_names=data_to_fit.media_names, quantiles=[ci_lower_quantile, 0.5, ci_upper_quantile])
+    fig = plot_media_channel_posteriors(
+        media_mix_model=mmm,
+        channel_names=data_to_fit.media_names,
+        quantiles=[ci_lower_quantile, 0.5, ci_upper_quantile],
+    )
     output_fname = os.path.join(results_dir, "model_media_posteriors.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
@@ -507,10 +517,11 @@ def describe_mmm_training(
     fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_bars_media_metrics(
-        metric=roi_hat, metric_name="ROI",
+        metric=roi_hat,
+        metric_name="ROI",
         channel_names=data_to_fit.media_names,
         interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="mean"
+        bar_height="mean",
     )
     output_fname = os.path.join(results_dir, "media_roi_mean.png")
     fig.savefig(output_fname, bbox_inches="tight")
