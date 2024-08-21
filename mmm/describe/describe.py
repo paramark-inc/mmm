@@ -421,7 +421,11 @@ def describe_mmm_training(
         with redirect_stdout(f):
             mmm._mcmc.print_summary(prob=data_to_fit.credibility_interval)
 
-    fig = plot_model_fit(media_mix_model=mmm, target_scaler=data_to_fit.target_scaler)
+    fig = plot_model_fit(
+        media_mix_model=mmm,
+        target_scaler=data_to_fit.target_scaler,
+        interval_mid_range=data_to_fit.credibility_interval,
+    )
     output_fname = os.path.join(results_dir, "model_fit_in_sample.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
