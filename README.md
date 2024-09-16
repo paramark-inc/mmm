@@ -77,7 +77,7 @@ pytest test/auto/
 For additional background on running MMM, these articles may be useful:
 * Robyn's [analyst guide to MMM](https://facebookexperimental.github.io/Robyn/docs/analysts-guide-to-MMM/)
 * Mario Filho's post [How To Create A Marketing Mix Model With LightweightMMM](https://forecastegy.com/posts/how-to-create-a-marketing-mix-model-with-lightweightmmm/)
-* Lightweight MMM's [demo notebook](https://github.com/fastrak-inc/lightweight_mmm/blob/main/examples/simple_end_to_end_demo.ipynb)
+* Lightweight MMM's [demo notebook](https://github.com/paramark-inc/lightweight_mmm/blob/main/examples/simple_end_to_end_demo.ipynb)
 
 
 

@@ -1,4 +1,4 @@
 [submodule "impl/lightweight_mmm"]
 	path = impl/lightweight_mmm
-	url = https://github.com/fastrak-inc/lightweight_mmm
+	url = https://github.com/paramark-inc/lightweight_mmm
 	branch = main
