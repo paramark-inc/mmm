@@ -53,7 +53,7 @@ def fit_lightweight_mmm(
         print(f"setting learned media priors for {learned_media_priors_count} channels")
 
     fit_params = {
-        "force_positive_baseline": config.get("force_positive_baseline", False),
+        "baseline_positivity_constraint": config.get("force_positive_baseline", False),
         "custom_priors": config.get("custom_priors"),
         "degrees_seasonality": config.get("degrees_seasonality", 2),
         "media_prior": media_priors,
@@ -132,7 +132,6 @@ def fit_lightweight_mmm(
     # jax.config.update("jax_enable_x64", True)
 
     mmm.fit(
-        baseline_positivity_constraint=fit_params["force_positive_baseline"],
         media=data_to_fit.media_data_train_scaled,
         media_names=data_to_fit.media_names,
         extra_features=extra_features,
