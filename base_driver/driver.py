@@ -41,11 +41,11 @@ class MMMBaseDriver:
         raw_config: bytes,
         current_commit: str,
     ) -> None:
-        input_data_raw.dump(output_dir=results_dir, suffix="raw", verbose=True)
+        input_data_raw.dump(output_dir=results_dir, suffix="raw", verbose=False)
         describe_input_data(input_data=input_data_raw, results_dir=results_dir, suffix="raw")
         describe_config(output_dir=results_dir, config=raw_config, git_sha=current_commit)
 
-        input_data_processed.dump(output_dir=results_dir, suffix="processed", verbose=True)
+        input_data_processed.dump(output_dir=results_dir, suffix="processed", verbose=False)
         describe_input_data(
             input_data=input_data_processed, results_dir=results_dir, suffix="processed"
         )
