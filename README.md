@@ -1,6 +1,6 @@
 ## Marketing Mix Models
 
-This repo provides a wrapper around the existing ecosystem of open-source MMM products. It makes it simple to:
+This repo provides a wrapper around Google's lightweight_mmm (and in future, other open-source MMM products). It makes it simple to:
 
 * Run MMM from a standard CSV file
 * Start with sensible defaults, then experiment further
@@ -95,7 +95,7 @@ This repository also includes forked copies of these other open-source projects 
 
 ## License
 
-Copyright 2023 Fastrak, Inc.
+Copyright 2023-24 Paramark, Inc.
 
 Licensed under the Apache License, Version 2.0 (the “License”);
 you may not use this file except in compliance with the License.
