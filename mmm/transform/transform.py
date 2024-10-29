@@ -41,6 +41,8 @@ def transform_input_generic(data_dict: dict, config: dict):
     :return: InputData object
     """
 
+    is_geo_config = bool(config.get("geo_col", None))
+
     metric_data = data_dict[constants.KEY_METRICS]
     column_names = set(metric_data.keys())
     column_names_already_seen = set()
@@ -97,6 +99,13 @@ def transform_input_generic(data_dict: dict, config: dict):
             media_cost_priors[i] = fixed_cost_prior
         else:
             media_cost_priors[i] = media_costs[i]
+
+        # for geo models, we hardcode a media cost prior of 1000 when there is no spend data for
+        # the column and no media cost prior.  This ensures a reasonable default for channels which
+        # have spend for some geographies but not others, without taking on the complexity of
+        # supporting geo-level media cost priors
+        if is_geo_config and 0 == np.int64(media_costs[i]):
+            media_cost_priors[i] = 1000
 
         media_names.append(display_name)
 

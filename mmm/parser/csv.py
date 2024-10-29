@@ -5,13 +5,23 @@ import pandas as pd
 
 
 def _parse_csv_shared(
-    data_fname: str, config: dict, keep_ignore_cols: bool = False
+    data_fname: str,
+    config: dict,
+    keep_ignore_cols: bool = False,
+    geo_filter: str = None,
 ) -> pd.DataFrame:
     # allow config option for name of date column;
     # if not provided, use "date" (case sensitive)
     index_col = config.get("date_col", "date")
 
     data_df = pd.read_csv(data_fname, index_col=index_col)
+
+    if geo_filter:
+        data_df = data_df[data_df[config["geo_col"]] == geo_filter]
+        data_df = data_df.drop(columns=[config["geo_col"]])
+    else:
+        if config.get("geo_col", None):
+            raise ValueError("geo_col set but not geo filter")
 
     if "total" in config.get("data_rows", {}):
         total_rows_expected = config["data_rows"]["total"]
@@ -32,17 +42,23 @@ def _parse_csv_shared(
     return data_df
 
 
-def parse_csv_generic(data_fname: str, config: dict):
+def parse_csv_generic(
+    data_fname: str,
+    config: dict,
+    geo_filter: str = None,
+):
     """
     :param data_fname: full path to file for raw data
     :param config: config dictionary (from yaml file)
+    :param geo_filter: geo to filter the data on
+
     :return: dict with format {
             KEY_GRANULARITY: granularity,
             KEY_OBSERVATIONS: observations,
             KEY_METRICS: { metric_name: [ metric values ], ... }
         }
     """
-    data_df = _parse_csv_shared(data_fname, config)
+    data_df = _parse_csv_shared(data_fname, config, geo_filter=geo_filter)
 
     date_strs = data_df.index.to_numpy()
 
@@ -61,7 +77,10 @@ def parse_csv_generic(data_fname: str, config: dict):
 
 
 def csv_to_df_generic(
-    data_fname: str, config: dict, keep_ignore_cols: bool = False
+    data_fname: str,
+    config: dict,
+    keep_ignore_cols: bool = False,
+    geo_filter: str = None,
 ) -> pd.DataFrame:
     """
     Parse a CSV to a DataFrame (generic implementation).
@@ -70,11 +89,15 @@ def csv_to_df_generic(
         data_fname: full path to file for raw data
         config: config dictionary (from yaml file)
         keep_ignore_cols: True to add the ignore_cols to the dataframe, False otherwise
+        geo_filter: geo to filter the data on
 
     Returns:
         DataFrame
     """
-    data_df = _parse_csv_shared(data_fname, config, keep_ignore_cols)
+    data_df = _parse_csv_shared(data_fname, config, keep_ignore_cols, geo_filter)
+
+    # for val in data_df.index.values:
+    #     print(val)
 
     # We set a freq of "D" here intentionally, so Pandas will raise an error if any days are
     # missing in the input data.
