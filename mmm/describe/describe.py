@@ -1,11 +1,15 @@
 from contextlib import redirect_stdout
+import json
 import math
+from typing import TypedDict
 import numpy as np
 import jax.numpy as jnp
 import pandas as pd
 import os
-import lightweight_mmm.lightweight_mmm
-import json
+
+# from numpyro.diagnostics import summary
+import numpyro.diagnostics
+from sklearn import metrics
 
 from impl.lightweight_mmm.lightweight_mmm.plot import (
     plot_bars_media_metrics,
@@ -20,11 +24,23 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
 
 from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
 
+from lightweight_mmm.lightweight_mmm import LightweightMMM
 from mmm.constants import constants
 from mmm.data.input_data import InputData
 from mmm.data.data_to_fit import DataToFit
 from mmm.outlier.outlier import print_outliers
 from mmm.plot.plot import plot_all_metrics
+
+# Type hints
+Coefficients = TypedDict(
+    "Coefficients", {"intercept": float, "coef_trend": float, "expo_trend": float}
+)
+
+MediaMedians = TypedDict("MediaMedians", {"blended_median": float, "top_medians": list[float]})
+Media = TypedDict(
+    "Media",
+    {"effect": MediaMedians, "roi": MediaMedians, "cost_per_target": MediaMedians},
+)
 
 
 def describe_input_data(input_data, results_dir, suffix):
@@ -260,31 +276,8 @@ def get_cost_per_target_df(
     )
 
 
-def _dump_posterior_metrics(
-    results_dir: str,
-    media_effect_df: pd.DataFrame,
-    roi_df: pd.DataFrame,
-    cost_per_target_df: pd.DataFrame,
-):
-    """
-    Write posterior metrics to CSV files
-
-    Args:
-        results_dir: directory to write to
-        media_effect_df: DataFrame of media effect values
-        roi_df: DataFrame of ROI values
-        cost_per_target_df: DataFrame of cost per target values
-
-    Returns:
-        None
-    """
-    media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
-    roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
-    cost_per_target_df.to_csv(os.path.join(results_dir, "media_performance_cost_per_target.csv"))
-
-
 def get_baseline_breakdown_df(
-    media_mix_model: lightweight_mmm.lightweight_mmm.LightweightMMM,
+    media_mix_model: LightweightMMM,
     input_data: InputData,
     data_to_fit: DataToFit,
     degrees_seasonality: int,
@@ -383,44 +376,50 @@ def get_baseline_breakdown_df(
     return baseline_breakdown_df
 
 
-def _dump_baseline_breakdown(
-    results_dir: str,
-    baseline_breakdown_df: pd.DataFrame,
-):
+def _extract_and_dump_coefficients(
+    mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str
+) -> Coefficients:
     """
-    Write the baseline breakdown to a file.
-
-    Args:
-        results_dir: Directory to write to
-        baseline_breakdown_df: See get_baseline_breakdown_df
-
-    Returns:
-        None
-    """
-    baseline_breakdown_df.to_csv(os.path.join(results_dir, "baseline_breakdown.csv"))
-
-
-def describe_mmm_training(
-    mmm, input_data, data_to_fit, degrees_seasonality, results_dir, include_response_curves=False
-) -> dict:
-    """
-    Plot and print diagnostic analyses of the MMM training data.
+    Extract and return a summary of coefficients data. Also dump the full data into a file.
 
     :param mmm: LightweightMMM instance
-    :param input_data: InputData instance
     :param data_to_fit: DataToFit instance
-    :param degrees_seasonality: degrees of seasonality used for fitting
     :param results_dir: directory to write plot files to
-    :param include_response_curves: True to include response curves in the output, False otherwise.
-        This is off by default because it is quite slow and appears to leak memory.
 
-    :return: none
+    :return: Summary of coefficients data.
     """
+
     output_fname = os.path.join(results_dir, "model_coefficients.txt")
     with open(output_fname, "w") as f:
         with redirect_stdout(f):
             mmm._mcmc.print_summary(prob=data_to_fit.credibility_interval)
 
+    # This summary calculation actually happens inside print_summary too, but print_summary does not
+    # return the values so we have to run these ourselves.
+    samples = mmm._mcmc.get_samples(group_by_chain=True)
+    summary = numpyro.diagnostics.summary(
+        samples, data_to_fit.credibility_interval, group_by_chain=True
+    )
+
+    # Convert type from float32 to float so they're compatible with json
+    return {
+        "intercept": float(summary["intercept"]["median"][0]),
+        "coef_trend": float(summary["coef_trend"]["median"][0]),
+        "expo_trend": float(summary["expo_trend"]["median"]),
+    }
+
+
+def _extract_and_plot_fit(mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str) -> float:
+    """
+    Extract and return the fit mape. Also plot the fit on a chart file.
+
+    :param mmm: LightweightMMM instance
+    :param data_to_fit: DataToFit instance
+    :param results_dir: directory to write plot files to
+
+    :return: Fit mape.
+
+    """
     fig = plot_model_fit(
         media_mix_model=mmm,
         target_scaler=data_to_fit.target_scaler,
@@ -429,6 +428,35 @@ def describe_mmm_training(
     output_fname = os.path.join(results_dir, "model_fit_in_sample.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
+    # Logic to calculate mape extracted from plot_model_fit
+    actual = mmm._target
+    prediction = mmm.trace["mu"]
+    if data_to_fit.target_scaler:
+        prediction = data_to_fit.target_scaler.inverse_transform(prediction)
+        actual = data_to_fit.target_scaler.inverse_transform(actual)
+
+    y_true = actual
+    y_pred = prediction
+
+    if mmm._target_is_log_scale:
+        y_true = jnp.exp(y_true)
+        y_pred = jnp.exp(y_pred)
+
+    mape = 100 * metrics.mean_absolute_percentage_error(y_true=y_true, y_pred=y_pred.mean(axis=0))
+
+    return mape
+
+
+def _plot_media(
+    mmm: LightweightMMM,
+    data_to_fit: DataToFit,
+    results_dir: str,
+    media_effect_hat: np.ndarray,
+    roi_hat: np.ndarray,
+    cost_per_target_hat: np.ndarray,
+) -> None:
+
+    # Posteriors
     ci_lower_quantile, ci_upper_quantile = data_to_fit.get_ci_quantiles()
     fig = plot_media_channel_posteriors(
         media_mix_model=mmm,
@@ -438,68 +466,12 @@ def describe_mmm_training(
     output_fname = os.path.join(results_dir, "model_media_posteriors.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
-        data_to_fit.media_costs_by_row_train_scaled
-    )
-    if include_response_curves:
-        num_pages = math.ceil(len(input_data.media_names) / 5)
-        fig = plot_response_curves(
-            media_mix_model=mmm,
-            media_scaler=data_to_fit.media_scaler,
-            target_scaler=data_to_fit.target_scaler,
-            figure_size=(8, 10 * num_pages),
-            costs_per_day=costs_per_day_unscaled,
-            percentage_add=0.0,
-            response_metric="target",
-        )
-        output_fname = os.path.join(results_dir, "response_curves_target.png")
-        fig.savefig(output_fname, bbox_inches="tight")
-
-        fig = plot_response_curves(
-            media_mix_model=mmm,
-            media_scaler=data_to_fit.media_scaler,
-            target_scaler=data_to_fit.target_scaler,
-            figure_size=(8, 10 * num_pages),
-            costs_per_day=costs_per_day_unscaled,
-            percentage_add=0.0,
-            response_metric="cost_per_target",
-        )
-        output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
-        fig.savefig(output_fname, bbox_inches="tight")
-
+    # Priors and posteriors
     fig = plot_prior_and_posterior(media_mix_model=mmm)
     output_fname = os.path.join(results_dir, "model_priors_and_posteriors.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
-    )
-    cost_per_target_hat = 1.0 / roi_hat
-
-    media_effect_df = get_media_effect_df(data_to_fit, media_effect_hat)
-
-    _dump_posterior_metrics(
-        results_dir,
-        media_effect_df,
-        get_roi_df(data_to_fit, media_effect_hat, roi_hat),
-        get_cost_per_target_df(data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat),
-    )
-
-    medians = media_effect_df["median"]
-    blended_median = medians.get("blended")
-    top_medians = medians.drop("blended").sort_values(ascending=False).head(3)
-
-    summary = {
-        "media_effect": {
-            "blended_median": float(blended_median),
-            "top_median": top_medians.to_dict(),
-        }
-    }
-
-    summary_file = open(os.path.join(results_dir, "summary.json"), "w")
-    summary_file.write(json.dumps(summary, indent=2))
-    summary_file.close()
-
+    # Bar charts
     fig = plot_bars_media_metrics(
         metric=media_effect_hat,
         metric_name="contribution percentage",
@@ -560,10 +532,6 @@ def describe_mmm_training(
     output_fname = os.path.join(results_dir, "media_cost_per_target_median.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    _dump_baseline_breakdown(
-        results_dir, get_baseline_breakdown_df(mmm, input_data, data_to_fit, degrees_seasonality)
-    )
-
     fig = plot_media_baseline_contribution_area_plot(
         media_mix_model=mmm,
         target_scaler=data_to_fit.target_scaler,
@@ -571,6 +539,197 @@ def describe_mmm_training(
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
     fig.savefig(output_fname, bbox_inches="tight")
+
+
+def _plot_response_curves(
+    mmm: LightweightMMM,
+    data_to_fit: DataToFit,
+    results_dir: str,
+    costs_per_day_unscaled: np.ndarray,
+    input_data: InputData,
+) -> None:
+    num_pages = math.ceil(len(input_data.media_names) / 5)
+    fig = plot_response_curves(
+        media_mix_model=mmm,
+        media_scaler=data_to_fit.media_scaler,
+        target_scaler=data_to_fit.target_scaler,
+        figure_size=(8, 10 * num_pages),
+        costs_per_day=costs_per_day_unscaled,
+        percentage_add=0.0,
+        response_metric="target",
+    )
+    output_fname = os.path.join(results_dir, "response_curves_target.png")
+    fig.savefig(output_fname, bbox_inches="tight")
+
+    fig = plot_response_curves(
+        media_mix_model=mmm,
+        media_scaler=data_to_fit.media_scaler,
+        target_scaler=data_to_fit.target_scaler,
+        figure_size=(8, 10 * num_pages),
+        costs_per_day=costs_per_day_unscaled,
+        percentage_add=0.0,
+        response_metric="cost_per_target",
+    )
+    output_fname = os.path.join(results_dir, "response_curves_cost_per_target.png")
+    fig.savefig(output_fname, bbox_inches="tight")
+
+
+def _extract_and_dump_media(
+    mmm: LightweightMMM,
+    input_data: InputData,
+    data_to_fit: DataToFit,
+    results_dir: str,
+    include_response_curves=False,
+) -> Media:
+    """
+    Extract and return a summary of the media effect, roi, and cost per target. Also dump the full media data
+    into different files as well as plot various charts.
+
+    :param mmm: LightweightMMM instance
+    :param input_data: InputData instance
+    :param data_to_fit: DataToFit instance
+    :param results_dir: directory to write plot files to
+    :param include_response_curves: True to include response curves in the output, False otherwise.
+        This is off by default because it is quite slow and appears to leak memory.
+
+    :return: Summary of media effect, roi, and cost per target.
+
+    """
+
+    # Calculate variables
+    costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
+        data_to_fit.media_costs_by_row_train_scaled
+    )
+
+    media_effect_hat, roi_hat = mmm.get_posterior_metrics(
+        unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
+    )
+    cost_per_target_hat = 1.0 / roi_hat
+
+    media_effect_df = get_media_effect_df(data_to_fit, media_effect_hat)
+    roi_df = get_roi_df(data_to_fit, media_effect_hat, roi_hat)
+    cost_per_target_df = get_cost_per_target_df(
+        data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat
+    )
+
+    # Convert type from float32 to float so they're compatible with json
+    media_effect_median = media_effect_df["median"].astype(float)
+    roi_median = roi_df["median"].astype(float)
+    cost_per_target_median = cost_per_target_df["median"].astype(float)
+
+    # Summarise media results
+    media = {
+        "effect": {
+            "blended_median": media_effect_median.get("blended"),
+            "top_medians": media_effect_median.astype(float)
+            .drop("blended")
+            .sort_values(ascending=False)
+            .head(3)
+            .to_dict(),
+        },
+        "roi": {
+            "blended_median": roi_median.get("blended"),
+            "top_medians": roi_median.drop("blended")
+            # Remove inf
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna()
+            .sort_values(ascending=False)
+            .head(3)
+            .to_dict(),
+        },
+        "cost_per_target": {
+            "blended_median": cost_per_target_median.get("blended"),
+            # Remove zero values
+            "top_medians": cost_per_target_median[cost_per_target_median > 0]
+            .drop("blended")
+            .sort_values(ascending=True)
+            .head(3)
+            .to_dict(),
+        },
+    }
+
+    # Write to CSVs
+    media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
+    roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
+    cost_per_target_df.to_csv(os.path.join(results_dir, "media_performance_cost_per_target.csv"))
+
+    # Plot media graphs
+    _plot_media(mmm, data_to_fit, results_dir, media_effect_hat, roi_hat, cost_per_target_hat)
+    if include_response_curves:
+        _plot_response_curves(mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data)
+
+    return media
+
+
+def _extract_and_dump_baseline(
+    mmm: LightweightMMM,
+    input_data: InputData,
+    data_to_fit: DataToFit,
+    degrees_seasonality: int,
+    results_dir: str,
+) -> pd.DataFrame:
+    """
+    Extract and return baseline breakdown dataframe. Also write it to a file.
+
+    :param mmm: LightweightMMM instance
+    :param input_data: InputData instance
+    :param data_to_fit: DataToFit instance
+    :param degrees_seasonality: degrees of seasonality used for fitting
+    :param results_dir: directory to write plot files to
+
+    :return: Baseline breakdown dataframe.
+    """
+
+    baseline_breakdown_df = get_baseline_breakdown_df(
+        mmm, input_data, data_to_fit, degrees_seasonality
+    )
+    baseline_breakdown_df.to_csv(os.path.join(results_dir, "baseline_breakdown.csv"))
+
+    return baseline_breakdown_df
+
+
+def describe_mmm_training(
+    mmm: LightweightMMM,
+    input_data: InputData,
+    data_to_fit: DataToFit,
+    degrees_seasonality: int,
+    results_dir: str,
+    include_response_curves=False,
+) -> dict:
+    """
+    Plot and print diagnostic analyses of the MMM training data.
+
+    :param mmm: LightweightMMM instance
+    :param input_data: InputData instance
+    :param data_to_fit: DataToFit instance
+    :param degrees_seasonality: degrees of seasonality used for fitting
+    :param results_dir: directory to write plot files to
+    :param include_response_curves: True to include response curves in the output, False otherwise.
+        This is off by default because it is quite slow and appears to leak memory.
+
+    :return: Summary of mmm training, e.g. coefficients, fit mape, media effect, etc.
+    """
+
+    coefficients = _extract_and_dump_coefficients(mmm, data_to_fit, results_dir)
+    fit_mape = _extract_and_plot_fit(mmm, data_to_fit, results_dir)
+    media = _extract_and_dump_media(
+        mmm, input_data, data_to_fit, results_dir, include_response_curves
+    )
+    baseline = _extract_and_dump_baseline(
+        mmm, input_data, data_to_fit, degrees_seasonality, results_dir
+    )
+
+    summary = {
+        "coefficients": coefficients,
+        "fit_mape": fit_mape,
+        "media": media,
+        "has_negative_baseline": bool((baseline["sum_of_medians"] < 0).any()),
+    }
+
+    # Write summary to a json file
+    summary_file = open(os.path.join(results_dir, "summary.json"), "w")
+    summary_file.write(json.dumps(summary, indent=2))
+    summary_file.close()
 
     return summary
 
