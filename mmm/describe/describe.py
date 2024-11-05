@@ -402,7 +402,7 @@ def _dump_baseline_breakdown(
 
 def describe_mmm_training(
     mmm, input_data, data_to_fit, degrees_seasonality, results_dir, include_response_curves=False
-):
+) -> dict:
     """
     Plot and print diagnostic analyses of the MMM training data.
 
@@ -571,6 +571,8 @@ def describe_mmm_training(
     )
     output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
     fig.savefig(output_fname, bbox_inches="tight")
+
+    return summary
 
 
 def describe_mmm_prediction(mmm, data_to_fit, results_dir):

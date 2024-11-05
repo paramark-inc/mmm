@@ -77,8 +77,8 @@ class MMMBaseDriver:
         input_data_processed: InputData,
         data_to_fit: DataToFit,
         config: dict,
-    ) -> None:
-        describe_mmm_training(
+    ) -> dict:
+        summary = describe_mmm_training(
             mmm=model,
             input_data=input_data_processed,
             data_to_fit=data_to_fit,
@@ -87,6 +87,8 @@ class MMMBaseDriver:
             include_response_curves=False,
         )
         describe_mmm_prediction(mmm=model, data_to_fit=data_to_fit, results_dir=results_dir)
+
+        return summary
 
     def save_model(self, results_dir: str, model: LightweightMMM, data_to_fit: DataToFit) -> None:
         data_to_fit.dump(results_dir=results_dir)
