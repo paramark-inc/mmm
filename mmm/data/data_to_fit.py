@@ -25,33 +25,54 @@ class DataToFit:
         """
         Generate a DataToFit instance from an InputData instance
         :param input_data: InputData instance
+        :param config: yaml config
         :return: DataToFit instance
         """
+        has_geo = input_data.geo_names is not None
         data_size = input_data.media_data.shape[0]
 
         split_ratio = config.get("train_test_ratio", 0.9)
         split_point = math.ceil(data_size * split_ratio)
 
-        media_data_train = input_data.media_data[:split_point, :]
-        media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :]
-        extra_features_train = input_data.extra_features_data[:split_point, :]
-        target_train = input_data.target_data[:split_point]
+        if has_geo:
+            media_data_train = input_data.media_data[:split_point, :, :]
+            media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :, :]
+            extra_features_train = input_data.extra_features_data[:split_point, :, :]
+            target_train = input_data.target_data[:split_point, :]
+        else:
+            media_data_train = input_data.media_data[:split_point, :]
+            media_costs_by_row_train = input_data.media_costs_by_row[:split_point, :]
+            extra_features_train = input_data.extra_features_data[:split_point, :]
+            target_train = input_data.target_data[:split_point]
 
         n_media_channels = len(input_data.media_names)
         n_extra_features = len(input_data.extra_features_names)
+        n_geos = len(input_data.geo_names) if has_geo else 0
 
         if split_point < data_size:
             has_test_dataset = True
-            media_data_test = input_data.media_data[split_point:, :]
-            media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :]
-            extra_features_test = input_data.extra_features_data[split_point:, :]
-            target_test = input_data.target_data[split_point:]
+            if has_geo:
+                media_data_test = input_data.media_data[split_point:, :, :]
+                media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :, :]
+                extra_features_test = input_data.extra_features_data[split_point:, :, :]
+                target_test = input_data.target_data[split_point:, :]
+            else:
+                media_data_test = input_data.media_data[split_point:, :]
+                media_costs_by_row_test = input_data.media_costs_by_row[split_point:, :]
+                extra_features_test = input_data.extra_features_data[split_point:, :]
+                target_test = input_data.target_data[split_point:]
         else:
             has_test_dataset = False
-            media_data_test = np.ndarray(shape=(0, n_media_channels))
-            media_costs_by_row_test = np.ndarray(shape=(0, n_media_channels))
-            extra_features_test = np.ndarray(shape=(0, n_extra_features))
-            target_test = np.array([])
+            if has_geo:
+                media_data_test = np.ndarray(shape=(0, n_media_channels, n_geos))
+                media_costs_by_row_test = np.ndarray(shape=(0, n_media_channels, n_geos))
+                extra_features_test = np.ndarray(shape=(0, n_extra_features, n_geos))
+                target_test = np.ndarray(shape=(0, n_geos))
+            else:
+                media_data_test = np.ndarray(shape=(0, n_media_channels))
+                media_costs_by_row_test = np.ndarray(shape=(0, n_media_channels))
+                extra_features_test = np.ndarray(shape=(0, n_extra_features))
+                target_test = np.array([])
 
         # Scale data (ignoring the zeroes in the media data).  Call fit only the first time because
         # only one scaling constant is stored in the scaler.
@@ -86,7 +107,7 @@ class DataToFit:
         else:
             media_data_test_scaled = np.ndarray(shape=media_data_test.shape)
             extra_features_test_scaled = np.ndarray(shape=extra_features_test.shape)
-            target_test_scaled = np.array([])
+            target_test_scaled = np.ndarray(shape=target_test.shape)
 
         media_cost_priors_scaled = media_cost_scaler.transform(input_data.media_cost_priors)
         media_costs_scaled = media_cost_scaler.transform(input_data.media_costs)
@@ -119,6 +140,7 @@ class DataToFit:
             target_scaler=target_scaler,
             target_name=input_data.target_name,
             credibility_interval=credibility_interval,
+            geo_names=input_data.geo_names,
         )
 
     @staticmethod
@@ -176,8 +198,39 @@ class DataToFit:
         target_is_log_scale,
         target_scaler,
         target_name,
-        credibility_interval=0.9,
+        credibility_interval,
+        geo_names,
     ):
+        """
+        DataToFit constructor.  Most fields come from InputData, with numpy arrays having the
+        same shape (e.g. media_data_train_scaled has the same shape as media_data).
+
+        Args:
+            date_strs:
+            time_granularity:
+            has_test_dataset:
+            media_data_train_scaled:
+            media_data_test_scaled:
+            media_scaler:
+            media_costs_scaled:
+            media_cost_priors_scaled:
+            learned_media_priors:
+            media_costs_by_row_train_scaled:
+            media_costs_by_row_test_scaled:
+            media_costs_scaler:
+            media_names:
+            extra_features_train_scaled:
+            extra_features_test_scaled:
+            extra_features_scaler:
+            extra_features_names:
+            target_train_scaled:
+            target_test_scaled:
+            target_is_log_scale:
+            target_scaler:
+            target_name:
+            credibility_interval:
+            geo_names:
+        """
         self.date_strs = date_strs
         self.time_granularity = time_granularity
         self.has_test_dataset = has_test_dataset
@@ -201,6 +254,7 @@ class DataToFit:
         self.target_scaler = target_scaler
         self.target_name = target_name
         self.credibility_interval = credibility_interval
+        self.geo_names = geo_names
 
     def get_ci_quantiles(self) -> tuple[float, float]:
         """
@@ -239,6 +293,7 @@ class DataToFit:
                 "date_strs": self.date_strs,
                 "media_names": self.media_names,
                 "extra_features_names": self.extra_features_names,
+                "geo_names": self.geo_names,
             },
             "scalers": {
                 "media_scaler": self.media_scaler.to_dict(),
@@ -265,6 +320,10 @@ class DataToFit:
         :return: (per-observation df, per-channel df) DataFrames to view DataToFit data.
                  All arrays are deep copies.
         """
+        # I'm being lazy
+        if self.geo_names is not None:
+            raise ValueError("unsupported operation")
+
         observation_data_by_column_name = {}
 
         ## media impressions

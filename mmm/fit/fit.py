@@ -44,7 +44,7 @@ def fit_lightweight_mmm(
         data_to_fit.learned_media_priors > 0.0,
         data_to_fit.learned_media_priors,
         data_to_fit.media_cost_priors_scaled,
-    ).tolist()
+    )
 
     learned_media_priors_count = len(
         [p for p in data_to_fit.learned_media_priors.tolist() if p > 0.0]

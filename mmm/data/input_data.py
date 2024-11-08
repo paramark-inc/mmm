@@ -1,3 +1,5 @@
+import types
+from collections import OrderedDict
 import numpy as np
 import os
 import pandas as pd
@@ -28,6 +30,7 @@ class InputData:
         extra_features_names,
         target_data,
         target_name,
+        geo_names,
     ):
         num_observations = date_strs.shape[0]
 
@@ -38,7 +41,6 @@ class InputData:
             constants.GRANULARITY_FOUR_WEEKS,
         ), f"{time_granularity}"
 
-        assert 2 == media_data.ndim, f"{media_data.ndim}"
         assert num_observations == media_data.shape[0], f"{num_observations} {media_data.shape[0]}"
         num_channels = media_data.shape[1]
         assert np.float64 == media_data.dtype, f"{np.float64} {media_data.dtype}"
@@ -61,7 +63,6 @@ class InputData:
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
-        assert 2 == extra_features_data.ndim, f"{extra_features_data.ndim}"
         num_extra_features = extra_features_data.shape[1]
         if num_extra_features:
             assert (
@@ -72,13 +73,22 @@ class InputData:
             extra_features_names
         ), f"{num_extra_features} {len(extra_features_names)}"
 
-        assert 1 == target_data.ndim, f"{target_data.ndim}"
         assert (
             num_observations == target_data.shape[0]
         ), f"{num_observations} {target_data.shape[0]}"
         assert np.float64 == target_data.dtype, f"{np.float64} {target_data.dtype}"
 
         assert target_name
+
+        if geo_names is None:
+            assert 2 == media_data.ndim, f"{media_data.ndim}"
+            assert 2 == extra_features_data.ndim, f"{extra_features_data.ndim}"
+            assert 1 == target_data.ndim, f"{target_data.ndim}"
+        else:
+            assert 3 == media_data.ndim, f"{media_data.ndim}"
+            assert 3 == extra_features_data.ndim, f"{extra_features_data.ndim}"
+            assert len(geo_names) == media_data.shape[2], f"{geo_names} != {media_data.shape[2]}"
+            assert 2 == target_data.ndim, f"{target_data.ndim}"
 
     @staticmethod
     def clone_with_data_edits(input_data, editor_func, context):
@@ -93,6 +103,9 @@ class InputData:
         :param context client context
         :return: new InputData instance (deep copy)
         """
+        if input_data.geo_names is not None:
+            raise ValueError("not supported for multiple geos")
+
         date_strs_copy = input_data.date_strs.copy()
         media_data_copy = input_data.media_data.copy()
         extra_features_data_copy = input_data.extra_features_data.copy()
@@ -120,6 +133,7 @@ class InputData:
             target_data=target_data_copy,
             target_is_log_scale=input_data.target_is_log_scale,
             target_name=input_data.target_name,
+            geo_names=input_data.geo_names,
         )
 
     # TODO change dates from strings to numpy datetimes to ensure common formatting
@@ -138,14 +152,17 @@ class InputData:
         target_data,
         target_is_log_scale,
         target_name,
+        geo_names,
     ):
         """
         :param date_strs: 1-d numpy array of labels for each time series data point
         :param time_granularity: string constant describing the granularity of the time series data (
                                  constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
-        :param media_data: 2-d numpy array of float64 media data values [time,channel]
+        :param media_data: numpy array of float64 media data values [time,channel] or
+                           [time, channel, geo]
         :param media_costs: 1-d numpy array of float64 total media costs [channel]
-        :param media_costs_by_row: 2-d numpy array of float 64 media costs per day [time, channel]
+        :param media_costs_by_row: numpy array of float 64 media costs per day [time, channel] or
+                                   [time, channel, geo]
         :param media_cost_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
                              be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
                              it makes sense to use a different value as the prior.
@@ -154,11 +171,13 @@ class InputData:
                              an MMM run on an earlier period.  These values will be provided directly to
                              LightweightMMM without any scaling.
         :param media_names: list of media channel names
-        :param extra_features_data: 2-d numpy array of float64 extra feature values [time, channel]
+        :param extra_features_data: numpy array of float64 extra feature values [time, channel] or
+                                    [time, channel, geo]
         :param extra_features_names: list of extra feature names
         :param target_data: 1-d numpy array of float64 target metric values
         :param target_is_log_scale: True if target metric is log scale, False otherwise
         :param target_name: name of target metric
+        :param geo_names: list of geo names, or None for a national model
         """
         InputData._validate(
             date_strs=date_strs,
@@ -172,8 +191,10 @@ class InputData:
             extra_features_names=extra_features_names,
             target_data=target_data,
             target_name=target_name,
+            geo_names=geo_names,
         )
 
+        self.geo_names = geo_names
         self.date_strs = date_strs
         self.time_granularity = time_granularity
         self.media_data = media_data
@@ -211,6 +232,10 @@ class InputData:
             summary_file.write(f"\nmedia_names:\n")
             for idx, media_name in enumerate(self.media_names):
                 summary_file.write(f"media_names[{idx}]={media_name}\n")
+            if self.geo_names is not None:
+                summary_file.write(f"\ngeo_names:\n")
+                for idx, geo_name in enumerate(self.geo_names):
+                    summary_file.write(f"geo_names[{idx}]={geo_name}\n")
             summary_file.write(f"\nextra_features_names:\n")
             for idx, extra_features_name in enumerate(self.extra_features_names):
                 summary_file.write(f"extra_features_names[{idx}]={extra_features_name}\n")
@@ -231,41 +256,45 @@ class InputData:
                 for idx, dstr in enumerate(self.date_strs):
                     dates_file.write(f"date_strs[{idx:>3}]={dstr:>10}\n")
 
-            for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}.txt"
-                with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
-                    for idx, val in enumerate(self.media_data[:, media_idx]):
-                        dstr = self.date_strs[idx]
-                        media_data_file.write(
-                            f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
-                        )
+            # Just being lazy: this code works for national models only
+            if self.geo_names is not None:
+                for media_idx, media_name in enumerate(self.media_names):
+                    media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}.txt"
+                    with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
+                        for idx, val in enumerate(self.media_data[:, media_idx]):
+                            dstr = self.date_strs[idx]
+                            media_data_file.write(
+                                f"media_data[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
+                            )
 
-            for media_idx, media_name in enumerate(self.media_names):
-                media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}_costs.txt"
-                with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
-                    for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
-                        dstr = self.date_strs[idx]
-                        media_costs_file.write(
-                            f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
-                        )
+                for media_idx, media_name in enumerate(self.media_names):
+                    media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}_costs.txt"
+                    with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
+                        for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
+                            dstr = self.date_strs[idx]
+                            media_costs_file.write(
+                                f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
+                            )
 
-            for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                extra_features_fname = (
-                    f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
-                )
+                for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
+                    extra_features_fname = (
+                        f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
+                    )
+                    with open(
+                        os.path.join(output_dir, extra_features_fname), "w"
+                    ) as extra_features_file:
+                        for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
+                            dstr = self.date_strs[idx]
+                            extra_features_file.write(
+                                f"extra_features_data[{extra_features_idx:>3}][{idx}]({dstr:>10})={val:,.2f}\n"
+                            )
+
                 with open(
-                    os.path.join(output_dir, extra_features_fname), "w"
-                ) as extra_features_file:
-                    for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
+                    os.path.join(output_dir, f"data_{suffix}_target.txt"), "w"
+                ) as target_file:
+                    for idx, val in enumerate(self.target_data):
                         dstr = self.date_strs[idx]
-                        extra_features_file.write(
-                            f"extra_features_data[{extra_features_idx:>3}][{idx}]({dstr:>10})={val:,.2f}\n"
-                        )
-
-            with open(os.path.join(output_dir, f"data_{suffix}_target.txt"), "w") as target_file:
-                for idx, val in enumerate(self.target_data):
-                    dstr = self.date_strs[idx]
-                    target_file.write(f"target_data[{idx:>3}]({dstr:>10})={val:,.2f}\n")
+                        target_file.write(f"target_data[{idx:>3}]({dstr:>10})={val:,.2f}\n")
 
     def clone_and_add_extra_features(self, feature_names, feature_data):
         """
@@ -274,6 +303,9 @@ class InputData:
         :param feature_data: data to add (2d numpy array of observation, features)
         :return: new InputData instance
         """
+        if self.geo_names is not None:
+            raise ValueError("unsupported operation")
+
         extra_features_names = self.extra_features_names + feature_names
         extra_features_data = np.hstack((self.extra_features_data, feature_data))
 
@@ -291,6 +323,7 @@ class InputData:
             target_data=self.target_data.copy(),
             target_is_log_scale=self.target_is_log_scale,
             target_name=self.target_name,
+            geo_names=self.geo_names,
         )
 
     @staticmethod
@@ -319,6 +352,181 @@ class InputData:
         :return: group index
         """
         return idx // 28
+
+    def _clone_and_resample_helper_national(
+        self,
+        time_granularity: str,
+        date_strs_resampled: list,
+        needs_cut_last: bool,
+        group_func: types.FunctionType,
+    ):
+        media_data_dict = OrderedDict(
+            [
+                (name, self.media_data[:, channel_idx])
+                for channel_idx, name in enumerate(self.media_names)
+            ]
+        )
+        media_df_daily = pd.DataFrame(data=media_data_dict)
+        media_df_resampled = media_df_daily.groupby(by=group_func).sum()
+
+        media_costs_data_dict = OrderedDict(
+            [
+                (name, self.media_costs_by_row[:, channel_idx])
+                for channel_idx, name in enumerate(self.media_names)
+            ]
+        )
+        media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
+        media_costs_df_resampled = media_costs_df_daily.groupby(by=group_func).sum()
+
+        extra_features_data_dict = OrderedDict(
+            [
+                (name, self.extra_features_data[:, extra_feature_idx])
+                for extra_feature_idx, name in enumerate(self.extra_features_names)
+            ]
+        )
+        extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
+        extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
+
+        target_data_dict = {self.target_name: self.target_data}
+        target_df_daily = pd.DataFrame(data=target_data_dict)
+        target_df_resampled = target_df_daily.groupby(by=group_func).sum()
+
+        if needs_cut_last:
+            date_strs_resampled = date_strs_resampled[:-1]
+            media_df_resampled = media_df_resampled[:-1]
+            media_costs_df_resampled = media_costs_df_resampled[:-1]
+            extra_features_df_resampled = extra_features_df_resampled[:-1]
+            target_df_resampled = target_df_resampled[:-1]
+
+        extra_features_data = (
+            extra_features_df_resampled.to_numpy()
+            if extra_features_df_resampled.shape[1]
+            else np.ndarray(shape=(media_df_resampled.shape[0], 0), dtype=np.float64)
+        )
+
+        return InputData(
+            date_strs=date_strs_resampled,
+            time_granularity=time_granularity,
+            media_data=media_df_resampled.to_numpy(),
+            media_costs=self.media_costs.copy(),
+            media_costs_by_row=media_costs_df_resampled.to_numpy(),
+            media_cost_priors=self.media_cost_priors.copy(),
+            learned_media_priors=self.learned_media_priors.copy(),
+            media_names=self.media_names.copy(),
+            extra_features_data=extra_features_data,
+            extra_features_names=self.extra_features_names.copy(),
+            # DataFrame returns a 2D array even when there's only one column
+            target_data=target_df_resampled.to_numpy()[:, 0],
+            target_is_log_scale=self.target_is_log_scale,
+            target_name=self.target_name,
+            geo_names=self.geo_names,
+        )
+
+    def _clone_and_resample_helper_geo(
+        self,
+        time_granularity: str,
+        date_strs_resampled: list,
+        needs_cut_last: bool,
+        group_func: types.FunctionType,
+        group_days: int,
+    ):
+        # we compute num_observations lazily
+        num_observations = -1
+        num_channels = self.media_data.shape[1]
+        num_extra_features = self.extra_features_data.shape[1]
+        num_geos = self.media_data.shape[2]
+
+        # we initialize these after computing num_observations.  They will have dimensions
+        # [ observations (post resample), channels, geos ].
+        media_data_resampled = None
+        media_costs_by_row_resampled = None
+        extra_features_data_resampled = None
+        target_data_resampled = None
+
+        for geo_idx, geo_name in enumerate(self.geo_names):
+            media_data_dict = OrderedDict(
+                [
+                    (name, self.media_data[:, channel_idx, geo_idx])
+                    for channel_idx, name in enumerate(self.media_names)
+                ]
+            )
+            media_df_daily = pd.DataFrame(data=media_data_dict)
+            media_df_resampled = media_df_daily.groupby(by=group_func).sum()
+
+            media_costs_data_dict = OrderedDict(
+                [
+                    (name, self.media_costs_by_row[:, channel_idx, geo_idx])
+                    for channel_idx, name in enumerate(self.media_names)
+                ]
+            )
+            media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
+            media_costs_df_resampled = media_costs_df_daily.groupby(by=group_func).sum()
+
+            extra_features_data_dict = OrderedDict(
+                [
+                    (name, self.extra_features_data[:, channel_idx, geo_idx])
+                    for channel_idx, name in enumerate(self.extra_features_names)
+                ]
+            )
+            extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
+            extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
+
+            target_data_dict = {self.target_name: self.target_data[:, geo_idx]}
+            target_df_daily = pd.DataFrame(data=target_data_dict)
+            target_df_resampled = target_df_daily.groupby(by=group_func).sum()
+
+            if needs_cut_last:
+                date_strs_resampled = date_strs_resampled[:-1]
+                media_df_resampled = media_df_resampled[:-1]
+                media_costs_df_resampled = media_costs_df_resampled[:-1]
+                extra_features_df_resampled = extra_features_df_resampled[:-1]
+                target_df_resampled = target_df_resampled[:-1]
+
+            extra_features_data = (
+                extra_features_df_resampled.to_numpy()
+                if extra_features_df_resampled.shape[1]
+                else np.ndarray(shape=(media_df_resampled.shape[0], 0), dtype=np.float64)
+            )
+
+            # lazy init the per-observation numpy arrays now that we've done the aggregation
+            # for one geo
+            if -1 == num_observations:
+                num_observations = media_df_resampled.shape[0]
+                media_data_resampled = np.zeros(
+                    shape=(num_observations, num_channels, num_geos), dtype=np.float64
+                )
+                media_costs_by_row_resampled = np.zeros(
+                    shape=(num_observations, num_channels, num_geos), dtype=np.float64
+                )
+                extra_features_data_resampled = np.zeros(
+                    shape=(num_observations, num_extra_features, num_geos), dtype=np.float64
+                )
+                target_data_resampled = np.zeros(
+                    shape=(num_observations, num_geos), dtype=np.float64
+                )
+
+            media_data_resampled[:, :, geo_idx] = media_df_resampled.to_numpy()
+            media_costs_by_row_resampled[:, :, geo_idx] = media_costs_df_resampled.to_numpy()
+            extra_features_data_resampled[:, :, geo_idx] = extra_features_data
+            # DataFrame returns a 2D array even when there's only one column
+            target_data_resampled[:, geo_idx] = target_df_resampled.to_numpy()[:, 0]
+
+        return InputData(
+            date_strs=date_strs_resampled,
+            time_granularity=time_granularity,
+            media_data=media_data_resampled,
+            media_costs=self.media_costs.copy(),
+            media_costs_by_row=media_costs_by_row_resampled,
+            media_cost_priors=self.media_cost_priors.copy(),
+            learned_media_priors=self.learned_media_priors.copy(),
+            media_names=self.media_names.copy(),
+            extra_features_data=extra_features_data_resampled,
+            extra_features_names=self.extra_features_names.copy(),
+            target_data=target_data_resampled,
+            target_is_log_scale=self.target_is_log_scale,
+            target_name=self.target_name,
+            geo_names=self.geo_names,
+        )
 
     def clone_and_resample(self, time_granularity: str = constants.GRANULARITY_WEEKLY):
         """
@@ -357,58 +565,14 @@ class InputData:
 
         date_strs_resampled = self.date_strs.copy()[::group_days]
 
-        media_data_dict = {
-            name: self.media_data[:, idx] for idx, name in enumerate(self.media_names)
-        }
-        media_df_daily = pd.DataFrame(data=media_data_dict)
-        media_df_resampled = media_df_daily.groupby(by=group_func).sum()
-
-        media_costs_data_dict = {
-            name: self.media_costs_by_row[:, idx] for idx, name in enumerate(self.media_names)
-        }
-        media_costs_df_daily = pd.DataFrame(data=media_costs_data_dict)
-        media_costs_df_resampled = media_costs_df_daily.groupby(by=group_func).sum()
-
-        extra_features_data_dict = {
-            name: self.extra_features_data[:, idx]
-            for idx, name in enumerate(self.extra_features_names)
-        }
-        extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
-        extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
-
-        target_data_dict = {self.target_name: self.target_data}
-        target_df_daily = pd.DataFrame(data=target_data_dict)
-        target_df_resampled = target_df_daily.groupby(by=group_func).sum()
-
-        if needs_cut_last:
-            date_strs_resampled = date_strs_resampled[:-1]
-            media_df_resampled = media_df_resampled[:-1]
-            media_costs_df_resampled = media_costs_df_resampled[:-1]
-            extra_features_df_resampled = extra_features_df_resampled[:-1]
-            target_df_resampled = target_df_resampled[:-1]
-
-        extra_features_data = (
-            extra_features_df_resampled.to_numpy()
-            if extra_features_df_resampled.shape[1]
-            else np.ndarray(shape=(media_df_resampled.shape[0], 0), dtype=np.float64)
-        )
-
-        return InputData(
-            date_strs=date_strs_resampled,
-            time_granularity=time_granularity,
-            media_data=media_df_resampled.to_numpy(),
-            media_costs=self.media_costs.copy(),
-            media_costs_by_row=media_costs_df_resampled.to_numpy(),
-            media_cost_priors=self.media_cost_priors.copy(),
-            learned_media_priors=self.learned_media_priors.copy(),
-            media_names=self.media_names.copy(),
-            extra_features_data=extra_features_data,
-            extra_features_names=self.extra_features_names.copy(),
-            # DataFrame returns a 2D array even when there's only one column
-            target_data=target_df_resampled.to_numpy()[:, 0],
-            target_is_log_scale=self.target_is_log_scale,
-            target_name=self.target_name,
-        )
+        if self.geo_names is None:
+            return self._clone_and_resample_helper_national(
+                time_granularity, date_strs_resampled, needs_cut_last, group_func
+            )
+        else:
+            return self._clone_and_resample_helper_geo(
+                time_granularity, date_strs_resampled, needs_cut_last, group_func, group_days
+            )
 
     def clone_and_log_transform_target_data(self):
         """
@@ -416,6 +580,9 @@ class InputData:
         You'll need to exp() them manually.
         :return: new InputData instance
         """
+        if self.geo_names is not None:
+            raise ValueError("unsupported operation")
+
         return InputData(
             date_strs=self.date_strs.copy(),
             time_granularity=self.time_granularity,
@@ -430,6 +597,7 @@ class InputData:
             target_data=np.log(self.target_data),
             target_is_log_scale=True,
             target_name=self.target_name + " (log-transformed)",
+            geo_names=self.geo_names,
         )
 
     def clone_and_split_media_data(
@@ -446,6 +614,9 @@ class InputData:
         :param media_after_name: name of the "after" channel created by this function
         :return:
         """
+        if self.geo_names is not None:
+            raise ValueError("unsupported operation")
+
         media_names = (
             self.media_names[0:channel_idx]
             + [media_before_name, media_after_name]
@@ -508,4 +679,5 @@ class InputData:
             target_data=self.target_data.copy(),
             target_is_log_scale=self.target_is_log_scale,
             target_name=self.target_name,
+            geo_names=self.geo_names,
         )

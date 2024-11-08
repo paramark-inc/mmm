@@ -51,8 +51,10 @@ def describe_input_data(input_data, results_dir, suffix):
     :param suffix: suffix to append to filename
     :return:
     """
-    plot_all_metrics(input_data=input_data, output_dir=results_dir, suffix=suffix)
-    print_outliers(input_data=input_data, output_dir=results_dir, suffix=suffix)
+    # I'm being lazy and haven't made these functions support geos
+    if input_data.geo_names is None:
+        plot_all_metrics(input_data=input_data, output_dir=results_dir, suffix=suffix)
+        print_outliers(input_data=input_data, output_dir=results_dir, suffix=suffix)
 
 
 def describe_config(output_dir, config, git_sha):
@@ -294,6 +296,11 @@ def get_baseline_breakdown_df(
     Returns:
         DataFrame with a breakdown of the baseline components for a given timestamp in each row.
     """
+    if input_data.geo_names is not None:
+        # This function doesn't work for geo models because (in part at least) the target scaler
+        # has one scaler per geo
+        raise ValueError("unsupported operation")
+
     num_observations = data_to_fit.media_data_train_scaled.shape[0]
     intercept = jnp.median(jnp.squeeze(media_mix_model.trace["intercept"]))
     coef_trend = jnp.median(jnp.squeeze(media_mix_model.trace["coef_trend"]))
@@ -351,6 +358,10 @@ def get_baseline_breakdown_df(
         for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
             data[i, columns.index(data_to_fit.extra_features_names[j])] = extra_features_mult[i, j]
 
+    # TODO: this doesn't work for geo models because the scaler has one value per geo, and the
+    # data array here has dimensions [time, baseline component].  Maybe adding a geo dimension to
+    # the end would solve this?
+    # e.g. for a 4 geo case I got the error ValueError: Incompatible shapes for broadcasting: shapes=[(4,), (71, 3)]
     data = data_to_fit.target_scaler.inverse_transform(data)
 
     baseline_breakdown_df = pd.DataFrame(data=data, columns=columns)
@@ -679,7 +690,6 @@ def _extract_and_dump_baseline(
 
     :return: Baseline breakdown dataframe.
     """
-
     baseline_breakdown_df = get_baseline_breakdown_df(
         mmm, input_data, data_to_fit, degrees_seasonality
     )
@@ -715,16 +725,21 @@ def describe_mmm_training(
     media = _extract_and_dump_media(
         mmm, input_data, data_to_fit, results_dir, include_response_curves
     )
-    baseline = _extract_and_dump_baseline(
-        mmm, input_data, data_to_fit, degrees_seasonality, results_dir
-    )
+    if input_data.geo_names is None:
+        # see comment in get_baseline_breakdown_df
+        baseline = _extract_and_dump_baseline(
+            mmm, input_data, data_to_fit, degrees_seasonality, results_dir
+        )
+    else:
+        baseline = None
 
     summary = {
         "coefficients": coefficients,
         "fit_mape": fit_mape,
         "media": media,
-        "has_negative_baseline": bool((baseline["sum_of_medians"] < 0).any()),
     }
+    if baseline is not None:
+        summary["has_negative_baseline"] = bool((baseline["sum_of_medians"] < 0).any())
 
     # Write summary to a json file
     summary_file = open(os.path.join(results_dir, "summary.json"), "w")

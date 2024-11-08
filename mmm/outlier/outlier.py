@@ -15,6 +15,8 @@ def print_outliers(input_data, output_dir, suffix):
     :param output_dir: path to directory to write to
     :param suffix: log suffix
     """
+    if input_data.geo_names is not None:
+        raise ValueError("unsupported operation")
 
     metric_names_and_values = []
 

@@ -35,6 +35,8 @@ def plot_all_metrics(input_data, output_dir, suffix):
     :param suffix: suffix to append to filename
     :return: n/a
     """
+    if input_data.geo_names is not None:
+        raise ValueError("unsupported operation")
 
     time_axis = np.arange(input_data.media_data.shape[0])
 

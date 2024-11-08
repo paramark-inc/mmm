@@ -81,6 +81,9 @@ class DataToFitTest(unittest.TestCase):
 
         data_to_fit = DataToFit.from_input_data(input_data=input_data, config=config)
 
+        # See comment above about regenerating test_data_to_fit.gz.
+        # data_to_fit.dump(".")
+
         output = data_to_fit.to_dict()
 
         assert_array_almost_equal(

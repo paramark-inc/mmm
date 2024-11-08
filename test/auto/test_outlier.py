@@ -29,6 +29,7 @@ class OutlierTestCase(unittest.TestCase):
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
             target_is_log_scale=False,
             target_name="Sales",
+            geo_names=None,
         )
 
         media_data_outliers = {"Google": [0, 3]}
@@ -75,6 +76,7 @@ class OutlierTestCase(unittest.TestCase):
             target_data=np.array([9.0, 10.0, 11.0, 12.0], dtype=np.float64),
             target_is_log_scale=False,
             target_name="Sales",
+            geo_names=None,
         )
 
         media_data_outliers = {"Google": [0, 3]}

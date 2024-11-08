@@ -1,3 +1,4 @@
+from multiprocessing.managers import Value
 from mmm.constants import constants
 
 import numpy as np
@@ -10,18 +11,58 @@ def _parse_csv_shared(
     keep_ignore_cols: bool = False,
     geo_filter: str = None,
 ) -> pd.DataFrame:
+    """
+    parse a CSV for MMM
+
+    Args:
+        data_fname: filename
+        config: config dict
+        keep_ignore_cols: True to preserve the ignore_cols
+        geo_filter: include only rows with geo_col = this value
+
+    Returns:
+        Data Frame with
+
+        index:
+            [geo, date] for geo-level data, unless a geo_filter is specified
+            date for aggregated data
+
+        columns:
+            columns in CSV minus ignore_cols (unless keep_ignore_cols), date, geo_col
+
+        date range:
+            as dictated by data_rows
+
+        geos:
+            all, unless geo_filter, in which case, only rows with geo_col = geo_filter
+    """
     # allow config option for name of date column;
     # if not provided, use "date" (case sensitive)
-    index_col = config.get("date_col", "date")
+    date_col = config.get("date_col", "date")
 
-    data_df = pd.read_csv(data_fname, index_col=index_col)
+    geo_col = config.get("geo_col", None)
+
+    data_df = pd.read_csv(data_fname)
+
+    # Converting to datetime is necessary because we sort the index below, and makes the date range
+    # slice below resilient to an unordered CSV.
+    data_df[date_col] = pd.to_datetime(data_df[date_col])
 
     if geo_filter:
         data_df = data_df[data_df[config["geo_col"]] == geo_filter]
         data_df = data_df.drop(columns=[config["geo_col"]])
+
+    # If there's a geo_filter, we just dropped the geo_col, making this equivalent to a non-geo
+    # case.
+    if not geo_col or geo_filter:
+        has_geo = False
+        data_df = data_df.set_index(date_col)
     else:
-        if config.get("geo_col", None):
-            raise ValueError("geo_col set but not geo filter")
+        has_geo = True
+        data_df = data_df.set_index([geo_col, date_col])
+        # sort_index is required to work around "MultiIndex slicing requires the index to be lexsorted"
+        # errors.
+        data_df = data_df.sort_index(level=[geo_col, date_col], ascending=[True, True])
 
     if "total" in config.get("data_rows", {}):
         total_rows_expected = config["data_rows"]["total"]
@@ -32,12 +73,33 @@ def _parse_csv_shared(
     if "start_date" in config["data_rows"] and "end_date" in config["data_rows"]:
         start = config["data_rows"]["start_date"].isoformat()
         end = config["data_rows"]["end_date"].isoformat()
-        data_df = data_df.loc[start:end]
+
+        if has_geo:
+            # Compute a slice that includes all geos but only dates between start and end
+            data_df = data_df.loc[(slice(None), slice(start, end)), :]
+        else:
+            data_df = data_df.loc[start:end]
     elif "to_use" in config["data_rows"]:
         data_df = data_df.tail(config["data_rows"]["to_use"])
 
     if not keep_ignore_cols and "ignore_cols" in config:
         data_df = data_df.drop(columns=config["ignore_cols"])
+
+    # Require that geo data is uniform (i.e. that all geos have the same dates)
+    if has_geo:
+        geo_values = data_df.index.levels[0].to_list()
+
+        first_geo = geo_values[0]
+        first_geo_dates = data_df.loc[first_geo].index.values
+
+        remaining_geos = geo_values[1:]
+
+        for this_geo in remaining_geos:
+            this_geo_dates = data_df.loc[this_geo].index.values
+            if not np.array_equal(first_geo_dates, this_geo_dates):
+                raise ValueError(
+                    f"geos '{first_geo}' and '{this_geo}' have data for different dates"
+                )
 
     return data_df
 
@@ -55,20 +117,38 @@ def parse_csv_generic(
     :return: dict with format {
             KEY_GRANULARITY: granularity,
             KEY_OBSERVATIONS: observations,
-            KEY_METRICS: { metric_name: [ metric values ], ... }
+            KEY_METRICS:
+              for a non geo model: { metric_name: [ metric values ], ... }
+              for a geo model: { geo: { metric_name: [ metric values ], ... } }
         }
     """
     data_df = _parse_csv_shared(data_fname, config, geo_filter=geo_filter)
 
-    date_strs = data_df.index.to_numpy()
+    has_geo = config.get("geo_col", None) and not geo_filter
+
+    if has_geo:
+        # remove_unused_levels() refreshes the index labels returned by index.levels[1].  Calling
+        # it is necessary because otherwise index.levels[1] would return the labelled for
+        # deleted rows.  The astype(str) is needed to remove the timestamp portion of the datetime.
+        data_df.index = data_df.index.remove_unused_levels()
+        date_strs = data_df.index.levels[1].astype(str).to_numpy()
+    else:
+        date_strs = data_df.index.astype(str).to_numpy()
 
     metric_dict = {}
     for column in data_df.columns:
-        metric_dict[column] = data_df[column].to_numpy(dtype=np.float64)
+        if has_geo:
+            geo_values = data_df.index.levels[0].values.tolist()
+            for geo in geo_values:
+                if geo not in metric_dict:
+                    metric_dict[geo] = {}
+                metric_dict[geo][column] = data_df.loc[geo][column].to_numpy(dtype=np.float64)
+        else:
+            metric_dict[column] = data_df[column].to_numpy(dtype=np.float64)
 
     data_dict = {
         constants.KEY_GRANULARITY: config.get("raw_data_granularity"),
-        constants.KEY_OBSERVATIONS: data_df.shape[0],
+        constants.KEY_OBSERVATIONS: date_strs.shape[0],
         constants.KEY_DATE_STRS: date_strs,
         constants.KEY_METRICS: metric_dict,
     }

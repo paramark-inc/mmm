@@ -44,6 +44,7 @@ class InputDataTest(unittest.TestCase):
             target_data=target_data,
             target_is_log_scale=False,
             target_name="Target",
+            geo_names=None,
         )
 
     def test_input_data_trivial_create(self):
@@ -61,6 +62,7 @@ class InputDataTest(unittest.TestCase):
             target_data=np.array([9.0]),
             target_is_log_scale=False,
             target_name="baz",
+            geo_names=None,
         )
 
         self.assertIsInstance(input_data, InputData)
