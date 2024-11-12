@@ -199,7 +199,7 @@ class DataToFit:
         target_scaler,
         target_name,
         credibility_interval,
-        geo_names,
+        geo_names=None,
     ):
         """
         DataToFit constructor.  Most fields come from InputData, with numpy arrays having the
