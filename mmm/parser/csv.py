@@ -124,22 +124,24 @@ def parse_csv_generic(
     """
     data_df = _parse_csv_shared(data_fname, config, geo_filter=geo_filter)
 
-    has_geo = config.get("geo_col", None) and not geo_filter
+    has_geo_data = config.get("geo_col", None) and not geo_filter
 
-    if has_geo:
+    if has_geo_data:
         # remove_unused_levels() refreshes the index labels returned by index.levels[1].  Calling
         # it is necessary because otherwise index.levels[1] would return the labelled for
         # deleted rows.  The astype(str) is needed to remove the timestamp portion of the datetime.
         data_df.index = data_df.index.remove_unused_levels()
         date_strs = data_df.index.levels[1].astype(str).to_numpy()
+        geo_names = data_df.index.levels[0].values.tolist()
     else:
         date_strs = data_df.index.astype(str).to_numpy()
+        # note that this includes both national data and geo data with a geo filter
+        geo_names = None
 
     metric_dict = {}
     for column in data_df.columns:
-        if has_geo:
-            geo_values = data_df.index.levels[0].values.tolist()
-            for geo in geo_values:
+        if has_geo_data:
+            for geo in geo_names:
                 if geo not in metric_dict:
                     metric_dict[geo] = {}
                 metric_dict[geo][column] = data_df.loc[geo][column].to_numpy(dtype=np.float64)
@@ -151,6 +153,8 @@ def parse_csv_generic(
         constants.KEY_OBSERVATIONS: date_strs.shape[0],
         constants.KEY_DATE_STRS: date_strs,
         constants.KEY_METRICS: metric_dict,
+        # geo_names is None for national data and geo data with a geo filter
+        constants.KEY_GEO_NAMES: geo_names,
     }
 
     return data_dict

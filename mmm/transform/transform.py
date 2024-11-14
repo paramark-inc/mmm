@@ -80,15 +80,18 @@ def transform_input_generic(data_dict: dict, config: dict):
     :return: InputData object
     """
 
-    has_geo = bool(config.get("geo_col", None))
+    # not existence of 'geo_col' in the yaml because there might be a geo filter, in which case
+    # we do not have geo data in the output.
+    has_geo_data = bool(data_dict[constants.KEY_GEO_NAMES])
 
     metric_data = data_dict[constants.KEY_METRICS]
-    if has_geo:
+    if has_geo_data:
         # all geos have the same column names, so we can get the list of column names from
         # an arbitrary geo.
         first_geo_metric_data = list(metric_data.values())[0]
+
         column_names = set(first_geo_metric_data.keys())
-        geo_names = list(metric_data.keys())
+        geo_names = data_dict[constants.KEY_GEO_NAMES]
     else:
         column_names = set(metric_data.keys())
         geo_names = None
@@ -97,12 +100,12 @@ def transform_input_generic(data_dict: dict, config: dict):
     media_names = []
     num_media_channels = len(config.get("media", []))
     num_observations = data_dict[constants.KEY_OBSERVATIONS]
-    num_geos = len(metric_data) if has_geo else 0
+    num_geos = len(metric_data) if has_geo_data else 0
 
     # initialize numpy arrays for each each of our features
     # (in the format that lightweight_mmm expects)
     # media_data has dimensions [observations, channel] / [observations, channel, geo]
-    if has_geo:
+    if has_geo_data:
         media_data = np.ndarray(
             shape=(num_observations, num_media_channels, num_geos),
             dtype=np.float64,
@@ -122,7 +125,7 @@ def transform_input_generic(data_dict: dict, config: dict):
     learned_media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
 
     # media_costs_by_row has dimensions [observations, channels] / [observations, channels, geos]
-    if has_geo:
+    if has_geo_data:
         media_costs_by_row = np.zeros(
             shape=(num_observations, num_media_channels, num_geos),
             dtype=np.float64,
@@ -137,7 +140,7 @@ def transform_input_generic(data_dict: dict, config: dict):
     num_extra_features = len(extra_features_names)
 
     # extra_features_data has dimensions [observations, features] / [observations, features, geos]
-    if has_geo:
+    if has_geo_data:
         extra_features_data = np.ndarray(
             shape=(num_observations, num_extra_features, num_geos), dtype=np.float64
         )
@@ -156,7 +159,7 @@ def transform_input_generic(data_dict: dict, config: dict):
         impressions_col = media_config.get("impressions_col")
         spend_col = media_config.get("spend_col")
 
-        if has_geo:
+        if has_geo_data:
             for geo_idx, geo_name in enumerate(geo_names):
                 _copy_metric_values_to_media_data(
                     metric_data[geo_name][impressions_col],
@@ -204,8 +207,11 @@ def transform_input_generic(data_dict: dict, config: dict):
         # for geo models, we hardcode a media cost prior of 1000 when there is no spend data for
         # the column and no media cost prior.  This ensures a reasonable default for channels which
         # have spend for some geographies but not others, without taking on the complexity of
-        # supporting geo-level media cost priors
-        if has_geo and 0 == np.int64(media_costs[channel_idx]):
+        # supporting geo-level media cost priors.  We do this based on existence of 'geo_col'
+        # (i.e. regardless of whether there is a geo_filter or not) so that our notebooks will work
+        # with the same yaml that we use for model fitting.
+        has_geo_col = bool(config.get("geo_col", None))
+        if has_geo_col and 0 == np.int64(media_costs[channel_idx]):
             print(
                 f"Setting a prior of 1000 for '{display_name}' because its aggregated spend is zero."
             )
@@ -230,7 +236,7 @@ def transform_input_generic(data_dict: dict, config: dict):
     matched_columns = set()
     for metric_name in column_names:
         if metric_name == config.get("target_col"):
-            if has_geo:
+            if has_geo_data:
                 target_data = np.ndarray(shape=(num_observations, num_geos), dtype=np.float64)
                 for geo_idx, geo_name in enumerate(geo_names):
                     target_data[:, geo_idx] = metric_data[geo_name][metric_name].astype(np.float64)
@@ -240,7 +246,7 @@ def transform_input_generic(data_dict: dict, config: dict):
 
         elif metric_name in extra_features_names:
             extra_features_idx = extra_features_names.index(metric_name)
-            if has_geo:
+            if has_geo_data:
                 for geo_idx, geo_name in enumerate(geo_names):
                     extra_features_data[:, extra_features_idx, geo_idx] = metric_data[geo_name][
                         metric_name

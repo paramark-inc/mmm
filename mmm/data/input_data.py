@@ -174,7 +174,7 @@ class InputData:
         :param extra_features_data: numpy array of float64 extra feature values [time, channel] or
                                     [time, channel, geo]
         :param extra_features_names: list of extra feature names
-        :param target_data: 1-d numpy array of float64 target metric values
+        :param target_data: numpy array of float64 target metric values with dims [time] or [time, geo]
         :param target_is_log_scale: True if target metric is log scale, False otherwise
         :param target_name: name of target metric
         :param geo_names: list of geo names, or None for a national model

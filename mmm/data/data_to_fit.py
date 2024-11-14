@@ -204,6 +204,7 @@ class DataToFit:
         """
         DataToFit constructor.  Most fields come from InputData, with numpy arrays having the
         same shape (e.g. media_data_train_scaled has the same shape as media_data).
+        See InputData.__init__().
 
         Args:
             date_strs:

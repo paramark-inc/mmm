@@ -2,6 +2,7 @@ KEY_GRANULARITY = "granularity"
 KEY_DATE_STRS = "date_strs"
 KEY_METRICS = "metrics"
 KEY_OBSERVATIONS = "observations"
+KEY_GEO_NAMES = "geo_names"
 
 # time series granularity
 GRANULARITY_DAILY = "daily"

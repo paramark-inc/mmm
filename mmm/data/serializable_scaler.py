@@ -2,6 +2,7 @@
 # is not available until jax.numpy has been imported
 import jaxlib
 import jax.numpy as jnp
+import numpy as np
 
 from impl.lightweight_mmm.lightweight_mmm.preprocessing import CustomScaler, NotFittedScalerError
 
@@ -38,8 +39,10 @@ class SerializableScaler(CustomScaler):
 
         multiply_by = None
         if isinstance(self.multiply_by, jaxlib.xla_extension.ArrayImpl):
-            # tolist() works for all jax "arrays" even if they are zero-dimension (i.e. scalar)
-            multiply_by = self.multiply_by.tolist()
+            # convert jax arrays to numpy because we can't serialize JAX arrays.  We do not
+            # convert these to lists because we want numpy multiplication to work after
+            # deserializing (see inverse_transform() for example).
+            multiply_by = np.array(self.multiply_by)
         elif isinstance(self.multiply_by, list):
             # for scalers created via from_dict, multiply/divide might be a standard list (not JAX)
             multiply_by = self.multiply_by
@@ -49,7 +52,8 @@ class SerializableScaler(CustomScaler):
 
         divide_by = None
         if isinstance(self.divide_by, jaxlib.xla_extension.ArrayImpl):
-            divide_by = self.divide_by.tolist()
+            # See multiply_by comment above
+            divide_by = np.array(self.divide_by)
         elif isinstance(self.divide_by, list):
             divide_by = self.divide_by
         else:

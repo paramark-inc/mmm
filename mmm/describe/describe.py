@@ -82,20 +82,28 @@ def _compute_blended_media_effect_hat(media_effect_hat: np.ndarray) -> np.ndarra
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (only present if there is geo data in the input)
 
     Returns:
         Array of blended media effect values, with axes:
           0: sample
+          1: geo (only present if there is geo data in the input)
     """
-    # blended_media_effect_hat => array with one dimension (sample_count) representing the overall
-    # media effect across the training period, as a percentage of the total target prediction.
+    # blended_media_effect_hat => array with dimensions
+    #   0: sample
+    #   1: geo (only present if there is geo data in the input)
+    # representing the overall media effect across the training period, as a percentage of the
+    # total target prediction.
     blended_media_effect_hat = media_effect_hat.sum(axis=1)
 
     return blended_media_effect_hat
 
 
 def _get_summary_df(
-    data_to_fit: DataToFit, media_distributions: np.ndarray, blended_distribution: np.ndarray
+    data_to_fit: DataToFit,
+    media_distributions: np.ndarray,
+    blended_distribution: np.ndarray,
+    geo_name: str,
 ) -> pd.DataFrame:
     """
     Get a summary dataframe containing credibility interval quantiles, mean, and median values
@@ -103,11 +111,17 @@ def _get_summary_df(
 
     Args:
         data_to_fit: DataToFit instance
-        media_distributions: array of media values, with axes:
+        media_distributions: array of media values (media effect, roi, or cost per target),
+            with axes:
             0: sample
             1: channel
-        blended_distribution: array of blended media values, with axes:
+            2: geo (only present if there is geo data in the input)
+        blended_distribution: array of blended media values (media effect, roi, or cost per target),
+            with axes:
             0: sample
+            1: geo (only present if there is geo data in the input)
+        geo_name: geo name to filter on (for a geo model), or None for a global model.  Summarizing
+            across geos in a geo model is not yet supported.
 
     Returns:
         Dataframe with credibility interval quantiles, mean, and median values
@@ -115,6 +129,15 @@ def _get_summary_df(
             0: channel
             1: <ci_lower_quantile>, <ci_upper_quantile>, median, mean
     """
+    if geo_name is not None and data_to_fit.geo_names is None:
+        raise ValueError("geo_name passed for a global model")
+
+    if geo_name is None and data_to_fit.geo_names is not None:
+        raise ValueError("summarizing across geos is not supported")
+
+    expected_media_dims = 2 if data_to_fit.geo_names is None else 3
+    assert expected_media_dims == media_distributions.ndim
+
     ci_quantiles = data_to_fit.get_ci_quantiles()
 
     columns = [str(x) for x in ci_quantiles]
@@ -122,26 +145,44 @@ def _get_summary_df(
         index=["blended"] + data_to_fit.media_names, columns=columns + ["median", "mean"]
     )
 
-    quantiles = np.quantile(blended_distribution, ci_quantiles)
+    if data_to_fit.geo_names is not None:
+        geo_idx = data_to_fit.geo_names.index(geo_name)
+        if geo_idx < 0:
+            raise ValueError(f"invalid geo: {geo_name}")
+        media_distributions_touse = media_distributions[:, :, geo_idx]
+        blended_distribution_touse = blended_distribution[:, geo_idx]
+    else:
+        media_distributions_touse = media_distributions
+        blended_distribution_touse = blended_distribution
+
+    # at this point the geo dimension should be gone
+    assert 2 == media_distributions_touse.ndim
+    assert 1 == blended_distribution_touse.ndim
+
+    quantiles = np.quantile(blended_distribution_touse, ci_quantiles)
 
     for idx, column in enumerate(columns):
         summary_df.loc["blended", column] = quantiles[idx]
-    summary_df.loc["blended", "median"] = np.median(blended_distribution)
-    summary_df.loc["blended", "mean"] = np.mean(blended_distribution)
+    summary_df.loc["blended", "median"] = np.median(blended_distribution_touse)
+    summary_df.loc["blended", "mean"] = np.mean(blended_distribution_touse)
 
     for media_idx in range(data_to_fit.media_data_train_scaled.shape[1]):
-        quantiles = np.quantile(media_distributions[:, media_idx], ci_quantiles)
+        quantiles = np.quantile(media_distributions_touse[:, media_idx], ci_quantiles)
         media_name = data_to_fit.media_names[media_idx]
 
         for idx, column in enumerate(columns):
             summary_df.loc[media_name, column] = quantiles[idx]
-        summary_df.loc[media_name, "median"] = np.median(media_distributions[:, media_idx])
-        summary_df.loc[media_name, "mean"] = np.mean(media_distributions[:, media_idx])
+        summary_df.loc[media_name, "median"] = np.median(media_distributions_touse[:, media_idx])
+        summary_df.loc[media_name, "mean"] = np.mean(media_distributions_touse[:, media_idx])
 
     return summary_df
 
 
-def get_media_effect_df(data_to_fit: DataToFit, media_effect_hat: np.ndarray) -> pd.DataFrame:
+def get_media_effect_df(
+    data_to_fit: DataToFit,
+    media_effect_hat: np.ndarray,
+    geo_name: str = None,
+) -> pd.DataFrame:
     """
     Build and return a dataframe of media effect values.
 
@@ -150,18 +191,26 @@ def get_media_effect_df(data_to_fit: DataToFit, media_effect_hat: np.ndarray) ->
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (only present when there is geo data in the input)
+        geo_name: geo name to filter on (for a geo model), or None for a global model.  Summarizing
+            across geos in a geo model is not yet supported.
 
     Returns:
         DataFrame of media effect values
     """
 
     return _get_summary_df(
-        data_to_fit, media_effect_hat, _compute_blended_media_effect_hat(media_effect_hat)
+        data_to_fit,
+        media_effect_hat,
+        _compute_blended_media_effect_hat(media_effect_hat),
+        geo_name,
     )
 
 
 def _compute_blended_roi_hat(
-    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+    data_to_fit: DataToFit,
+    media_effect_hat: np.ndarray,
+    roi_hat: np.ndarray,
 ) -> np.ndarray:
     """
     Compute blended ROI hat.
@@ -171,36 +220,55 @@ def _compute_blended_roi_hat(
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (geo models only)
         roi_hat: ndarray with axes
           0: samples
           1: channels
+          2: geo (geo models only)
 
     Returns:
         ndarray with axes:
           0: samples
+          1: geo (geo models only)
     """
+    # blended_media_effect_hat has axes:
+    #   0: samples
+    #   1: geo (geo models only)
     blended_media_effect_hat = _compute_blended_media_effect_hat(media_effect_hat)
 
-    # target_sum_train_unscaled => scalar, unscaled sum of target values over the training period
+    # target_sum_train_unscaled => unscaled sum of target values over the training period.  For
+    # global models this is a scalar value, and for geo models it is an array with dims [geo].
     target_sum_train_unscaled = data_to_fit.target_scaler.inverse_transform(
         data_to_fit.target_train_scaled
-    ).sum()
-    # incremental_target_sum_hat => array with one dimension (sample count) representing the
-    # unscaled total incremental target prediction over the training period
+    ).sum(axis=0)
+
+    # incremental_target_sum_hat => array with dimensions
+    #   sample count
+    #   geo (geo models only)
+    #
+    # representing the unscaled total incremental target prediction over the training period.
     incremental_target_sum_hat = blended_media_effect_hat * target_sum_train_unscaled
-    # total_cost_train_unscaled => scalar, unscaled sum of media costs over the training period
-    total_cost_train_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
+
+    # total_cost_train_unscaled => array with dimensions [geo] for geo models or a scalar for
+    # global models.  The values are the unscaled sum of media costs over the training period.
+    # media_costs_by_row_train_unscaled has dims [time, channel, geo] or [time, channel]
+    media_costs_by_row_train_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
-    ).sum()
-    # blended_roi_hat => array with one dimension (sample_count) representing the overall roi
-    # across the training period (total target metric prediction attributable to media spend /
-    # total media cost)
+    )
+    total_cost_train_unscaled = media_costs_by_row_train_unscaled.sum(axis=(0, 1))
+
+    # blended_roi_hat => array with dimensions [sample_count, geo] or [sample_count] representing
+    # the overall roi across the training period (total target metric prediction attributable
+    # to media spend / total media cost)
     blended_roi_hat = incremental_target_sum_hat / total_cost_train_unscaled
     return blended_roi_hat
 
 
 def get_roi_df(
-    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+    data_to_fit: DataToFit,
+    media_effect_hat: np.ndarray,
+    roi_hat: np.ndarray,
+    geo_name: str = None,
 ) -> pd.DataFrame:
     """
     Build and return a dataframe of ROI values.
@@ -210,21 +278,30 @@ def get_roi_df(
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (geo models only)
         roi_hat: array of roi values, with axes:
-          0: sample
-          1: channel
+           0: sample
+           1: channel
+           2: geo (geo models only)
+        geo_name: geo name to filter on (for a geo model), or None for a global model.  Summarizing
+           across geos in a geo model is not yet supported.
 
     Returns:
         DataFrame of ROI values
     """
 
     return _get_summary_df(
-        data_to_fit, roi_hat, _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
+        data_to_fit,
+        roi_hat,
+        _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat),
+        geo_name,
     )
 
 
 def _compute_blended_cost_per_target_hat(
-    data_to_fit: DataToFit, media_effect_hat: np.ndarray, roi_hat: np.ndarray
+    data_to_fit: DataToFit,
+    media_effect_hat: np.ndarray,
+    roi_hat: np.ndarray,
 ) -> np.ndarray:
     """
     Compute blended cost per target hat
@@ -234,13 +311,16 @@ def _compute_blended_cost_per_target_hat(
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (geo models only)
         roi_hat: array of roi values, with axes:
-          0: sample
-          1: channel
+           0: sample
+           1: channel
+           2: geo (geo models only)
 
     Returns:
         ndarray of blended cost per target hat values with axes:
-          0: samples
+           0: sample
+           1: geo (geo models only)
 
     """
     return 1.0 / _compute_blended_roi_hat(data_to_fit, media_effect_hat, roi_hat)
@@ -251,6 +331,7 @@ def get_cost_per_target_df(
     media_effect_hat: np.ndarray,
     roi_hat: np.ndarray,
     cost_per_target_hat: np.ndarray,
+    geo_name: str = None,
 ) -> pd.DataFrame:
     """
     Build and return a dataframe of cost per target values.
@@ -260,12 +341,17 @@ def get_cost_per_target_df(
         media_effect_hat: array of media effect values, with axes:
            0: sample
            1: channel
+           2: geo (geo models only)
         roi_hat: ndarray with axes
-          0: samples
-          1: channels
+           0: samples
+           1: channels
+           2: geo (geo models only)
         cost_per_target_hat: cost per target metric values, with axes:
-          0: sample
-          1: channel
+           0: sample
+           1: channel
+           2: geo (geo models only)
+        geo_name: geo name to filter on (for a geo model), or None for a global model.  Summarizing
+           across geos in a geo model is not yet supported.
 
     Returns:
         DataFrame of cost per target values
@@ -275,6 +361,7 @@ def get_cost_per_target_df(
         data_to_fit,
         cost_per_target_hat,
         _compute_blended_cost_per_target_hat(data_to_fit, media_effect_hat, roi_hat),
+        geo_name,
     )
 
 
@@ -388,7 +475,9 @@ def get_baseline_breakdown_df(
 
 
 def _extract_and_dump_coefficients(
-    mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str
+    mmm: LightweightMMM,
+    data_to_fit: DataToFit,
+    results_dir: str,
 ) -> Coefficients:
     """
     Extract and return a summary of coefficients data. Also dump the full data into a file.
@@ -413,11 +502,15 @@ def _extract_and_dump_coefficients(
     )
 
     # Convert type from float32 to float so they're compatible with json
-    return {
-        "intercept": float(summary["intercept"]["median"][0]),
-        "coef_trend": float(summary["coef_trend"]["median"][0]),
-        "expo_trend": float(summary["expo_trend"]["median"]),
-    }
+    # TODO need to make this work with geo models
+    if data_to_fit.geo_names is None:
+        return {
+            "intercept": float(summary["intercept"]["median"][0]),
+            "coef_trend": float(summary["coef_trend"]["median"][0]),
+            "expo_trend": float(summary["expo_trend"]["median"]),
+        }
+    else:
+        return {}
 
 
 def _extract_and_plot_fit(mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str) -> float:
@@ -466,7 +559,6 @@ def _plot_media(
     roi_hat: np.ndarray,
     cost_per_target_hat: np.ndarray,
 ) -> None:
-
     # Posteriors
     ci_lower_quantile, ci_upper_quantile = data_to_fit.get_ci_quantiles()
     fig = plot_media_channel_posteriors(
@@ -482,66 +574,69 @@ def _plot_media(
     output_fname = os.path.join(results_dir, "model_priors_and_posteriors.png")
     fig.savefig(output_fname, bbox_inches="tight")
 
-    # Bar charts
-    fig = plot_bars_media_metrics(
-        metric=media_effect_hat,
-        metric_name="contribution percentage",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="mean",
-    )
-    output_fname = os.path.join(results_dir, "media_contribution_mean.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+    # For geo models, plot_bars_media_metrics plots the mean across all geos.  We're not including
+    # these at present because I'm considering these not useful for a small number of geos.
+    if data_to_fit.geo_names is None:
+        # Bar charts
+        fig = plot_bars_media_metrics(
+            metric=media_effect_hat,
+            metric_name="contribution percentage",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="mean",
+        )
+        output_fname = os.path.join(results_dir, "media_contribution_mean.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=media_effect_hat,
-        metric_name="contribution percentage",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="median",
-    )
-    output_fname = os.path.join(results_dir, "media_contribution_median.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_bars_media_metrics(
+            metric=media_effect_hat,
+            metric_name="contribution percentage",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="median",
+        )
+        output_fname = os.path.join(results_dir, "media_contribution_median.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=roi_hat,
-        metric_name="ROI",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="mean",
-    )
-    output_fname = os.path.join(results_dir, "media_roi_mean.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_bars_media_metrics(
+            metric=roi_hat,
+            metric_name="ROI",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="mean",
+        )
+        output_fname = os.path.join(results_dir, "media_roi_mean.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=roi_hat,
-        metric_name="ROI",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="median",
-    )
-    output_fname = os.path.join(results_dir, "media_roi_median.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_bars_media_metrics(
+            metric=roi_hat,
+            metric_name="ROI",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="median",
+        )
+        output_fname = os.path.join(results_dir, "media_roi_median.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=cost_per_target_hat,
-        metric_name="cost per target",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="mean",
-    )
-    output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_bars_media_metrics(
+            metric=cost_per_target_hat,
+            metric_name="cost per target",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="mean",
+        )
+        output_fname = os.path.join(results_dir, "media_cost_per_target_mean.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
-    fig = plot_bars_media_metrics(
-        metric=cost_per_target_hat,
-        metric_name="cost per target",
-        channel_names=data_to_fit.media_names,
-        interval_mid_range=data_to_fit.credibility_interval,
-        bar_height="median",
-    )
-    output_fname = os.path.join(results_dir, "media_cost_per_target_median.png")
-    fig.savefig(output_fname, bbox_inches="tight")
+        fig = plot_bars_media_metrics(
+            metric=cost_per_target_hat,
+            metric_name="cost per target",
+            channel_names=data_to_fit.media_names,
+            interval_mid_range=data_to_fit.credibility_interval,
+            bar_height="median",
+        )
+        output_fname = os.path.join(results_dir, "media_cost_per_target_median.png")
+        fig.savefig(output_fname, bbox_inches="tight")
 
     fig = plot_media_baseline_contribution_area_plot(
         media_mix_model=mmm,
@@ -591,6 +686,7 @@ def _extract_and_dump_media(
     data_to_fit: DataToFit,
     results_dir: str,
     include_response_curves=False,
+    include_plot_media=True,
 ) -> Media:
     """
     Extract and return a summary of the media effect, roi, and cost per target. Also dump the full media data
@@ -602,72 +698,139 @@ def _extract_and_dump_media(
     :param results_dir: directory to write plot files to
     :param include_response_curves: True to include response curves in the output, False otherwise.
         This is off by default because it is quite slow and appears to leak memory.
+    :param include_plot_media: True to plot media, False otherwise
 
-    :return: Summary of media effect, roi, and cost per target.
+    :return: Summary of media effect, roi, and cost per target across all geos
+       as dict with keys -> values
+       "effect" -> { "blended_median" -> n, "top_medians" -> [] }
+       "roi" -> { "blended_median" -> n, "top_medians" -> [] }
+       "cost_per_target" -> { "blended_median" -> n, "top_medians" -> [] }
 
     """
 
     # Calculate variables
+    # costs_per_day_unscaled has dimensions:
+    #   0: time
+    #   1: channel
+    #   2: geo (geo models only)
     costs_per_day_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
         data_to_fit.media_costs_by_row_train_scaled
     )
 
     media_effect_hat, roi_hat = mmm.get_posterior_metrics(
-        unscaled_costs=costs_per_day_unscaled.sum(axis=0), target_scaler=data_to_fit.target_scaler
+        unscaled_costs=costs_per_day_unscaled.sum(axis=0),
+        target_scaler=data_to_fit.target_scaler,
     )
     cost_per_target_hat = 1.0 / roi_hat
 
-    media_effect_df = get_media_effect_df(data_to_fit, media_effect_hat)
-    roi_df = get_roi_df(data_to_fit, media_effect_hat, roi_hat)
-    cost_per_target_df = get_cost_per_target_df(
-        data_to_fit, media_effect_hat, roi_hat, cost_per_target_hat
-    )
+    # Summarize media effect, roi, cost per target across all geos
+    if data_to_fit.geo_names is None:
+        global_media_effect_df = get_media_effect_df(
+            data_to_fit,
+            media_effect_hat,
+            geo_name=None,
+        )
+        global_roi_df = get_roi_df(
+            data_to_fit,
+            media_effect_hat,
+            roi_hat,
+            geo_name=None,
+        )
+        global_cost_per_target_df = get_cost_per_target_df(
+            data_to_fit,
+            media_effect_hat,
+            roi_hat,
+            cost_per_target_hat,
+            geo_name=None,
+        )
 
-    # Convert type from float32 to float so they're compatible with json
-    media_effect_median = media_effect_df["median"].astype(float)
-    roi_median = roi_df["median"].astype(float)
-    cost_per_target_median = cost_per_target_df["median"].astype(float)
+        # Write to CSVs
+        global_media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
+        global_roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
+        global_cost_per_target_df.to_csv(
+            os.path.join(results_dir, "media_performance_cost_per_target.csv")
+        )
+    else:
+        # We don't yet support summarizing media effect, roi, cost per target across geos
+        # because get_posterior_metrics can't do this.
+        global_media_effect_df = None
+        global_roi_df = None
+        global_cost_per_target_df = None
 
-    # Summarise media results
-    media = {
-        "effect": {
-            "blended_median": media_effect_median.get("blended"),
-            "top_medians": media_effect_median.astype(float)
-            .drop("blended")
-            .sort_values(ascending=False)
-            .head(3)
-            .to_dict(),
-        },
-        "roi": {
-            "blended_median": roi_median.get("blended"),
-            "top_medians": roi_median.drop("blended")
-            # Remove inf
-            .replace([np.inf, -np.inf], np.nan)
-            .dropna()
-            .sort_values(ascending=False)
-            .head(3)
-            .to_dict(),
-        },
-        "cost_per_target": {
-            "blended_median": cost_per_target_median.get("blended"),
-            # Remove zero values
-            "top_medians": cost_per_target_median[cost_per_target_median > 0]
-            .drop("blended")
-            .sort_values(ascending=True)
-            .head(3)
-            .to_dict(),
-        },
-    }
+        # Summarize media effect, roi, cost per target for each geo
+        for geo_name in data_to_fit.geo_names:
+            geo_media_effect_df = get_media_effect_df(
+                data_to_fit,
+                media_effect_hat,
+                geo_name=geo_name,
+            )
+            geo_roi_df = get_roi_df(
+                data_to_fit,
+                media_effect_hat,
+                roi_hat,
+                geo_name=geo_name,
+            )
+            geo_cost_per_target_df = get_cost_per_target_df(
+                data_to_fit,
+                media_effect_hat,
+                roi_hat,
+                cost_per_target_hat,
+                geo_name=geo_name,
+            )
 
-    # Write to CSVs
-    media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
-    roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
-    cost_per_target_df.to_csv(os.path.join(results_dir, "media_performance_cost_per_target.csv"))
+            geo_media_effect_df.to_csv(
+                os.path.join(results_dir, f"media_performance_effect_{geo_name}.csv")
+            )
+            geo_roi_df.to_csv(os.path.join(results_dir, f"media_performance_roi_{geo_name}.csv"))
+            geo_cost_per_target_df.to_csv(
+                os.path.join(results_dir, f"media_performance_cost_per_target_{geo_name}.csv")
+            )
 
     # Plot media graphs
-    _plot_media(mmm, data_to_fit, results_dir, media_effect_hat, roi_hat, cost_per_target_hat)
+    if include_plot_media:
+        _plot_media(mmm, data_to_fit, results_dir, media_effect_hat, roi_hat, cost_per_target_hat)
     if include_response_curves:
         _plot_response_curves(mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data)
+
+    # Summarise global media results
+    # Convert type from float32 to float so they're compatible with json
+    if data_to_fit.geo_names is None:
+        media_effect_median = global_media_effect_df["median"].astype(float)
+        roi_median = global_roi_df["median"].astype(float)
+        cost_per_target_median = global_cost_per_target_df["median"].astype(float)
+        media = {
+            "effect": {
+                "blended_median": media_effect_median.get("blended"),
+                "top_medians": media_effect_median.astype(float)
+                .drop("blended")
+                .sort_values(ascending=False)
+                .head(3)
+                .to_dict(),
+            },
+            "roi": {
+                "blended_median": roi_median.get("blended"),
+                "top_medians": roi_median.drop("blended")
+                # Remove inf
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna()
+                .sort_values(ascending=False)
+                .head(3)
+                .to_dict(),
+            },
+            "cost_per_target": {
+                "blended_median": cost_per_target_median.get("blended"),
+                # Remove zero values
+                "top_medians": cost_per_target_median[cost_per_target_median > 0]
+                .drop("blended")
+                .sort_values(ascending=True)
+                .head(3)
+                .to_dict(),
+            },
+        }
+    else:
+        # We don't yet support summarizing media effect, roi, cost per target across geos
+        # because get_posterior_metrics can't do this.
+        media = {}
 
     return media
 
