@@ -172,6 +172,13 @@ class DataToFit:
         else:
             with open(input_file) as f:
                 input_dict = msgpack.load(f)
+
+        # Add geo_names = None to the input_dict if it's not already there.  This makes it
+        # possible to load a data_to_fit that was generated in the past before we added geo_names
+        # support.
+        if "geo_names" not in input_dict["display"]:
+            input_dict["display"]["geo_names"] = None
+
         return DataToFit.from_dict(input_dict)
 
     def __init__(
@@ -199,7 +206,7 @@ class DataToFit:
         target_scaler,
         target_name,
         credibility_interval,
-        geo_names=None,
+        geo_names,
     ):
         """
         DataToFit constructor.  Most fields come from InputData, with numpy arrays having the
