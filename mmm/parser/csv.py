@@ -101,6 +101,19 @@ def _parse_csv_shared(
                     f"geos '{first_geo}' and '{this_geo}' have data for different dates"
                 )
 
+    # Now that we have filtered down to the desired date range, we can enforce that the
+    # dataset has all days between start and end.  Setting the frequency on the index
+    # enforces this constraint.
+    if data_df.index.nlevels > 1:
+        # Geo dataset -> date is at level[1]
+        # We need to call remove_unused_levels() because for MultiIndex, deleted keys
+        # remain in the index until you refresh it with this call.
+        data_df.index = data_df.index.remove_unused_levels()
+        data_df.index.levels[1].freq = "D"
+    else:
+        # National dataset
+        data_df.index.freq = "D"
+
     return data_df
 
 
@@ -182,9 +195,5 @@ def csv_to_df_generic(
 
     # for val in data_df.index.values:
     #     print(val)
-
-    # We set a freq of "D" here intentionally, so Pandas will raise an error if any days are
-    # missing in the input data.
-    data_df.index = pd.DatetimeIndex(pd.to_datetime(data_df.index, format="%Y-%m-%d"), freq="D")
 
     return data_df
