@@ -443,6 +443,10 @@ class InputData:
         extra_features_data_resampled = None
         target_data_resampled = None
 
+        # cut the last element from national level data first
+        if needs_cut_last:
+            date_strs_resampled = date_strs_resampled[:-1]
+
         for geo_idx, geo_name in enumerate(self.geo_names):
             media_data_dict = OrderedDict(
                 [
@@ -476,7 +480,6 @@ class InputData:
             target_df_resampled = target_df_daily.groupby(by=group_func).sum()
 
             if needs_cut_last:
-                date_strs_resampled = date_strs_resampled[:-1]
                 media_df_resampled = media_df_resampled[:-1]
                 media_costs_df_resampled = media_costs_df_resampled[:-1]
                 extra_features_df_resampled = extra_features_df_resampled[:-1]
