@@ -125,7 +125,7 @@ def parse_csv_generic(
     """
     :param data_fname: full path to file for raw data
     :param config: config dictionary (from yaml file)
-    :param geo_filter: geo to filter the data on
+    :param geo_filter: geo to filter the data on, or None to parse data for all geos
 
     :return: dict with format {
             KEY_GRANULARITY: granularity,
@@ -186,7 +186,7 @@ def csv_to_df_generic(
         data_fname: full path to file for raw data
         config: config dictionary (from yaml file)
         keep_ignore_cols: True to add the ignore_cols to the dataframe, False otherwise
-        geo_filter: geo to filter the data on
+        geo_filter: geo to filter the data on, or None to include data for all geos
 
     Returns:
         DataFrame
