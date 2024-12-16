@@ -1,15 +1,15 @@
 import os
 import secrets
 
-from datetime import datetime
+import datetime
 
 
 def generate_unique_date_key():
-    now_date = datetime.now()
+    now_date = datetime.datetime.now(datetime.UTC)
     yyyymmdd = now_date.date().strftime("%Y-%m-%d")
     seconds_since_midnight = now_date.hour * 3600 + now_date.minute * 60 + now_date.second
     hextoken = secrets.token_hex(4)
-    return f"{yyyymmdd}-{seconds_since_midnight}-{hextoken}"
+    return f"{yyyymmdd}-{seconds_since_midnight:05d}-{hextoken}"
 
 
 def make_results_dir(data_dir: str, dirname_fixed: str = "", results_key=None) -> str:
