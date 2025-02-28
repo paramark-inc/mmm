@@ -118,8 +118,6 @@ def fit_lightweight_mmm(
                 highs = []
                 lows = []
                 for values in definition["values"]:
-                    print("values", values)
-                    print("type: ", definition["type"])
                     highs.append(values["high"])
                     lows.append(values["low"])
 
