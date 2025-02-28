@@ -105,22 +105,51 @@ def fit_lightweight_mmm(
         print(f"setting custom_priors for {', '.join(fit_params['custom_priors'].keys())}")
 
         for name, definition in fit_params["custom_priors"].items():
-            if definition["type"] == "halfnormal":
-                custom_priors[name] = numpyro.distributions.HalfNormal(definition["scale"])
-            elif definition["type"] == "normal":
-                custom_priors[name] = numpyro.distributions.Normal(
-                    definition["loc"], definition["scale"]
-                )
-            elif definition["type"] == "uniform":
+            # Handle case where definition is a list of distributions
+            # XXX only uniform is supported for now
+
+            if "values" in definition:
+                if definition["type"] != "uniform":
+                    raise ValueError(
+                        f"Custom prior '{name}' has 'values' key but type '{definition['type']}'. "
+                        "Only 'uniform' type supports multiple values."
+                    )
+
+                highs = []
+                lows = []
+                for values in definition["values"]:
+                    print("values", values)
+                    print("type: ", definition["type"])
+                    highs.append(values["high"])
+                    lows.append(values["low"])
+
+                # example output:
+                # { "custom_priors": { "coef_trend": <Uniform object at 0x7fff843f3dd0>} }
+                # this is slightly weird, but later the model samples from
+                # parallel arrays of values, so we need to pass in two arrays
                 custom_priors[name] = numpyro.distributions.Uniform(
-                    definition["low"],
-                    definition["high"],
+                    jnp.array(lows),
+                    jnp.array(highs),
                 )
-            elif definition["type"] == "gamma":
-                custom_priors[name] = numpyro.distributions.Gamma(
-                    definition["concentration"],
-                    definition["rate"],
-                )
+
+            # Handle case where definition is a single distribution
+            else:
+                if definition["type"] == "halfnormal":
+                    custom_priors[name] = numpyro.distributions.HalfNormal(definition["scale"])
+                elif definition["type"] == "normal":
+                    custom_priors[name] = numpyro.distributions.Normal(
+                        definition["loc"], definition["scale"]
+                    )
+                elif definition["type"] == "uniform":
+                    custom_priors[name] = numpyro.distributions.Uniform(
+                        definition["low"],
+                        definition["high"],
+                    )
+                elif definition["type"] == "gamma":
+                    custom_priors[name] = numpyro.distributions.Gamma(
+                        definition["concentration"],
+                        definition["rate"],
+                    )
 
     # remove parameter(s) that we want to write, but don't pass directly to fit()
     del fit_params["model_name"], fit_params["custom_priors"]
