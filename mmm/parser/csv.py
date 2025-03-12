@@ -70,9 +70,16 @@ def _parse_csv_shared(
             total_rows_expected == data_df.shape[0]
         ), f"lhs={total_rows_expected}, rhs={data_df.shape[0]}"
 
-    if "start_date" in config["data_rows"] and "end_date" in config["data_rows"]:
-        start = config["data_rows"]["start_date"].isoformat()
-        end = config["data_rows"]["end_date"].isoformat()
+    # Lwmmm configs have start_date and end_date, but robyn configs have start_period_label and end_period_label.
+    start_date_config = "start_date"
+    end_date_config = "end_date"
+    if "start_period_label" in config["data_rows"]:
+        start_date_config = "start_period_label"
+        end_date_config = "end_period_label"
+
+    if start_date_config in config["data_rows"] and end_date_config in config["data_rows"]:
+        start = config["data_rows"][start_date_config].isoformat()
+        end = config["data_rows"][end_date_config].isoformat()
 
         if has_geo:
             # Compute a slice that includes all geos but only dates between start and end
