@@ -896,6 +896,37 @@ def describe_mmm_training(
     else:
         baseline = None
 
+    # Get and save fit data
+    daily_df = pd.read_csv(os.path.join(results_dir, "daily_data.csv"))
+    fit_df = get_fit_in_sample_df(
+        media_mix_model=mmm,
+        data_to_fit=data_to_fit,
+        daily_df=daily_df,
+        geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
+        time_granularity=None,  # Use original time granularity
+    )
+    fit_df.to_csv(os.path.join(results_dir, "fit_data.csv"))
+
+    # If we have multiple models (e.g., from different runs), save their fit data too
+    if hasattr(mmm, "model_dict"):
+        multiple_fit_df = get_multiple_fit_in_sample_df(
+            model_dict=mmm.model_dict,
+            data_to_fit=data_to_fit,
+            daily_df=daily_df,
+            geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
+            time_granularity=None,  # Use original time granularity
+            moving_avg_period=0,  # No moving average by default
+        )
+        multiple_fit_df.to_csv(os.path.join(results_dir, "multiple_fit_data.csv"))
+
+    # Get and save media and baseline contribution data
+    media_baseline_df = get_media_and_baseline_contribution_df(
+        media_mix_model=mmm,
+        data_to_fit=data_to_fit,
+        time_granularity=None,  # Use original time granularity
+    )
+    media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
+
     summary = {
         "coefficients": coefficients,
         "fit_mape": fit_mape,
@@ -943,3 +974,251 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         )
         output_fname = os.path.join(results_dir, "model_fit_out_of_sample.png")
         fig.savefig(output_fname, bbox_inches="tight")
+
+
+def get_media_and_baseline_contribution_df(
+    media_mix_model: LightweightMMM,
+    data_to_fit: DataToFit,
+    time_granularity: str = None,
+) -> pd.DataFrame:
+    """
+    Create a DataFrame containing the time series of media and baseline contributions.
+
+    Args:
+        media_mix_model: LightweightMMM instance
+        data_to_fit: DataToFit instance
+        time_granularity: Optional time granularity to resample the data to. One of:
+            "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
+
+    Returns:
+        DataFrame with columns:
+            - date: datetime index
+            - baseline:median: baseline contribution
+            - {channel_name}:median: contribution for each media channel
+    """
+    if not hasattr(media_mix_model, "trace"):
+        raise lightweight_mmm.NotFittedModelError(
+            "Model needs to be fit first before attempting to get media and baseline contributions."
+        )
+
+    # Get the media and baseline contributions
+    plot_df = create_media_baseline_contribution_df(
+        media_mix_model=media_mix_model,
+        target_scaler=data_to_fit.target_scaler,
+        channel_names=data_to_fit.media_names,
+    )
+
+    # Convert to DataFrame with datetime index
+    df = pd.DataFrame()
+    df.index = pd.to_datetime(data_to_fit.date_strs[: len(plot_df)])
+
+    # Add baseline contribution
+    df["baseline:median"] = plot_df["baseline contribution"]
+
+    # Add each channel's contribution
+    for channel in data_to_fit.media_names:
+        df[f"{channel}:median"] = plot_df[f"{channel} contribution"]
+
+    # Resample if requested
+    if time_granularity is not None:
+        data_groupby_to_resample_mode = {
+            "week": "W",
+            "two_weeks": "2W",
+            "four_weeks": "4W",
+        }
+        mode = data_groupby_to_resample_mode[time_granularity]
+        df = df.resample(mode, label="left", closed="left").sum()
+
+    return df
+
+
+def get_fit_in_sample_df(
+    media_mix_model: LightweightMMM,
+    data_to_fit: DataToFit,
+    daily_df: pd.DataFrame,
+    geo_name: str = None,
+    time_granularity: str = None,
+) -> pd.DataFrame:
+    """
+    Create a DataFrame containing the actual and predicted values for a single model.
+
+    Args:
+        media_mix_model: LightweightMMM instance
+        data_to_fit: DataToFit instance
+        daily_df: DataFrame containing the daily data
+        geo_name: Optional geo name to filter on. If None, uses all geos.
+        time_granularity: Optional time granularity to resample the data to. One of:
+            "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
+
+    Returns:
+        DataFrame with columns:
+            - date: datetime index
+            - actual: actual target values
+            - predicted:median: median predicted values
+            - predicted:lower: lower bound of predicted values (5th percentile)
+            - predicted:upper: upper bound of predicted values (95th percentile)
+    """
+    if not hasattr(media_mix_model, "trace"):
+        raise lightweight_mmm.NotFittedModelError(
+            "Model needs to be fit first before attempting to get fit data."
+        )
+
+    if data_to_fit.geo_names is not None and geo_name is None:
+        raise NotImplementedError("Getting aggregate fit across geos is not supported")
+
+    if geo_name is not None:
+        geo_idx = data_to_fit.geo_names.index(geo_name)
+    else:
+        geo_idx = -1
+
+    # Get posterior predictions
+    posterior_pred = media_mix_model.trace["mu"]
+    target_scaler = data_to_fit.target_scaler
+    posterior_pred = target_scaler.inverse_transform(posterior_pred)
+
+    if -1 != geo_idx:
+        posterior_pred = posterior_pred[:, :, geo_idx]
+
+    # Calculate summary statistics
+    predictions_median = np.median(posterior_pred, axis=0)
+    predictions_lower = np.percentile(posterior_pred, 5, axis=0)
+    predictions_upper = np.percentile(posterior_pred, 95, axis=0)
+
+    # Create DataFrame with datetime index
+    df = pd.DataFrame()
+    df.index = pd.to_datetime(data_to_fit.date_strs[: len(predictions_median)])
+
+    # Add actual values
+    if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
+        data_df = daily_df
+    else:
+        time_granularity_to_resample_rule = {
+            constants.GRANULARITY_WEEKLY: "W",
+            constants.GRANULARITY_TWO_WEEKS: "2W",
+            constants.GRANULARITY_FOUR_WEEKS: "4W",
+        }
+        data_df = daily_df.resample(
+            time_granularity_to_resample_rule[data_to_fit.time_granularity],
+            closed="left",
+            label="left",
+        ).sum()
+
+    df["actual"] = data_df[data_to_fit.target_col].iloc[: len(predictions_median)]
+
+    # Add predicted values
+    df["predicted:median"] = predictions_median
+    df["predicted:lower"] = predictions_lower
+    df["predicted:upper"] = predictions_upper
+
+    # Resample if requested
+    if time_granularity is not None:
+        data_groupby_to_resample_mode = {
+            "week": "W",
+            "two_weeks": "2W",
+            "four_weeks": "4W",
+        }
+        mode = data_groupby_to_resample_mode[time_granularity]
+        df = df.resample(mode, label="left", closed="left").sum()
+
+    return df
+
+
+def get_multiple_fit_in_sample_df(
+    model_dict: dict[str, LightweightMMM],
+    data_to_fit: DataToFit,
+    daily_df: pd.DataFrame,
+    geo_name: str = None,
+    time_granularity: str = None,
+    moving_avg_period: int = 0,
+) -> pd.DataFrame:
+    """
+    Create a DataFrame containing the actual and predicted values for multiple models.
+
+    Args:
+        model_dict: Dictionary mapping model names to LightweightMMM instances
+        data_to_fit: DataToFit instance
+        daily_df: DataFrame containing the daily data
+        geo_name: Optional geo name to filter on. If None, uses all geos.
+        time_granularity: Optional time granularity to resample the data to. One of:
+            "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
+        moving_avg_period: Optional period for calculating moving average of actual values.
+            If 0, no moving average is calculated.
+
+    Returns:
+        DataFrame with columns:
+            - date: datetime index
+            - actual: actual target values
+            - actual:moving_avg: moving average of actual values (if moving_avg_period > 0)
+            - {model_name}:median: median predicted values for each model
+            - {model_name}:lower: lower bound of predicted values for each model (5th percentile)
+            - {model_name}:upper: upper bound of predicted values for each model (95th percentile)
+    """
+    if data_to_fit.geo_names is not None and geo_name is None:
+        raise NotImplementedError("Getting aggregate fit across geos is not supported")
+
+    if geo_name is not None:
+        geo_idx = data_to_fit.geo_names.index(geo_name)
+    else:
+        geo_idx = -1
+
+    # Create DataFrame with datetime index
+    df = pd.DataFrame()
+
+    # Add actual values
+    if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
+        data_df = daily_df
+    else:
+        time_granularity_to_resample_rule = {
+            constants.GRANULARITY_WEEKLY: "W",
+            constants.GRANULARITY_TWO_WEEKS: "2W",
+            constants.GRANULARITY_FOUR_WEEKS: "4W",
+        }
+        data_df = daily_df.resample(
+            time_granularity_to_resample_rule[data_to_fit.time_granularity],
+            closed="left",
+            label="left",
+        ).sum()
+
+    df.index = data_df.index
+    df["actual"] = data_df[data_to_fit.target_col]
+
+    # Add moving average if requested
+    if moving_avg_period > 0:
+        df["actual:moving_avg"] = df["actual"].rolling(moving_avg_period, min_periods=1).mean()
+
+    # Add predicted values for each model
+    for name, model in model_dict.items():
+        if not hasattr(model, "trace"):
+            raise lightweight_mmm.NotFittedModelError(
+                "Model needs to be fit first before attempting to get fit data."
+            )
+
+        # Get posterior predictions
+        posterior_pred = model.trace["mu"]
+        target_scaler = data_to_fit.target_scaler
+        posterior_pred = target_scaler.inverse_transform(posterior_pred)
+
+        if -1 != geo_idx:
+            posterior_pred = posterior_pred[:, :, geo_idx]
+
+        # Calculate summary statistics
+        predictions_median = np.median(posterior_pred, axis=0)
+        predictions_lower = np.percentile(posterior_pred, 5, axis=0)
+        predictions_upper = np.percentile(posterior_pred, 95, axis=0)
+
+        # Add to DataFrame
+        df[f"{name}:median"] = predictions_median
+        df[f"{name}:lower"] = predictions_lower
+        df[f"{name}:upper"] = predictions_upper
+
+    # Resample if requested
+    if time_granularity is not None:
+        data_groupby_to_resample_mode = {
+            "week": "W",
+            "two_weeks": "2W",
+            "four_weeks": "4W",
+        }
+        mode = data_groupby_to_resample_mode[time_granularity]
+        df = df.resample(mode, label="left", closed="left").sum()
+
+    return df
