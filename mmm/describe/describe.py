@@ -986,7 +986,7 @@ def get_fit_in_sample_df(
 
     Returns:
         DataFrame with columns:
-            - date: datetime index
+            - date: datetime column
             - actual: actual target values
             - predicted:median: median predicted values
             - predicted:lower: lower bound of predicted values (5th percentile)
@@ -1021,6 +1021,7 @@ def get_fit_in_sample_df(
     # Create DataFrame with datetime index
     df = pd.DataFrame()
     df.index = pd.to_datetime(data_to_fit.date_strs[: len(predictions_median)])
+    df["date"] = df.index  # Add date as a column
 
     # Add actual values
     if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
@@ -1063,6 +1064,7 @@ def get_fit_in_sample_df(
         }
         mode = data_groupby_to_resample_mode[time_granularity]
         df = df.resample(mode, label="left", closed="left").sum()
+        df["date"] = df.index  # Re-add date as column after resampling
 
     return df
 
@@ -1083,7 +1085,7 @@ def get_media_and_baseline_contribution_df(
 
     Returns:
         DataFrame with columns:
-            - date: datetime index
+            - date: datetime column
             - baseline:median: baseline contribution
             - {channel_name}:median: contribution for each media channel
     """
@@ -1108,12 +1110,15 @@ def get_media_and_baseline_contribution_df(
         period_predictions_df = daily_predictions_df.resample(
             mode, label="left", closed="left"
         ).sum()
+        period_predictions_df["date"] = (
+            period_predictions_df.index
+        )  # Add date as column after resampling
 
     channel_names = [m["display_name"] for m in config["media"]]
     # reverse the order of channel names to match lightweight mmm
     channel_names.reverse()
     channel_cols = [f"{c}:median" for c in channel_names]
-    cols = ["baseline:median"] + channel_cols
+    cols = ["date", "baseline:median"] + channel_cols  # Include date in the columns to select
 
     # Select only the columns we need and return the DataFrame
     return period_predictions_df[cols]
