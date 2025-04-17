@@ -897,11 +897,10 @@ def describe_mmm_training(
         baseline = None
 
     # Get and save fit data
-    daily_df = pd.read_csv(os.path.join(results_dir, "daily_data.csv"))
     fit_df = get_fit_in_sample_df(
         media_mix_model=mmm,
         data_to_fit=data_to_fit,
-        daily_df=daily_df,
+        input_data=input_data,
         geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
         time_granularity=None,  # Use original time granularity
     )
@@ -912,7 +911,7 @@ def describe_mmm_training(
         multiple_fit_df = get_multiple_fit_in_sample_df(
             model_dict=mmm.model_dict,
             data_to_fit=data_to_fit,
-            daily_df=daily_df,
+            input_data=input_data,
             geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
             time_granularity=None,  # Use original time granularity
             moving_avg_period=0,  # No moving average by default
@@ -1035,7 +1034,7 @@ def get_media_and_baseline_contribution_df(
 def get_fit_in_sample_df(
     media_mix_model: LightweightMMM,
     data_to_fit: DataToFit,
-    daily_df: pd.DataFrame,
+    input_data: InputData,
     geo_name: str = None,
     time_granularity: str = None,
 ) -> pd.DataFrame:
@@ -1045,7 +1044,7 @@ def get_fit_in_sample_df(
     Args:
         media_mix_model: LightweightMMM instance
         data_to_fit: DataToFit instance
-        daily_df: DataFrame containing the daily data
+        input_data: InputData instance containing the original data
         geo_name: Optional geo name to filter on. If None, uses all geos.
         time_granularity: Optional time granularity to resample the data to. One of:
             "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
@@ -1090,20 +1089,30 @@ def get_fit_in_sample_df(
 
     # Add actual values
     if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
-        data_df = daily_df
+        # For daily data, use the target data directly
+        if geo_idx != -1:
+            df["actual"] = input_data.target_data[:, geo_idx]
+        else:
+            df["actual"] = input_data.target_data
     else:
+        # For non-daily data, we need to resample
         time_granularity_to_resample_rule = {
             constants.GRANULARITY_WEEKLY: "W",
             constants.GRANULARITY_TWO_WEEKS: "2W",
             constants.GRANULARITY_FOUR_WEEKS: "4W",
         }
-        data_df = daily_df.resample(
+        # Create a temporary daily DataFrame
+        daily_df = pd.DataFrame(index=pd.to_datetime(input_data.date_strs))
+        if geo_idx != -1:
+            daily_df["target"] = input_data.target_data[:, geo_idx]
+        else:
+            daily_df["target"] = input_data.target_data
+        # Resample to the desired granularity
+        df["actual"] = daily_df.resample(
             time_granularity_to_resample_rule[data_to_fit.time_granularity],
             closed="left",
             label="left",
-        ).sum()
-
-    df["actual"] = data_df[data_to_fit.target_col].iloc[: len(predictions_median)]
+        ).sum()["target"]
 
     # Add predicted values
     df["predicted:median"] = predictions_median
@@ -1126,7 +1135,7 @@ def get_fit_in_sample_df(
 def get_multiple_fit_in_sample_df(
     model_dict: dict[str, LightweightMMM],
     data_to_fit: DataToFit,
-    daily_df: pd.DataFrame,
+    input_data: InputData,
     geo_name: str = None,
     time_granularity: str = None,
     moving_avg_period: int = 0,
@@ -1137,7 +1146,7 @@ def get_multiple_fit_in_sample_df(
     Args:
         model_dict: Dictionary mapping model names to LightweightMMM instances
         data_to_fit: DataToFit instance
-        daily_df: DataFrame containing the daily data
+        input_data: InputData instance
         geo_name: Optional geo name to filter on. If None, uses all geos.
         time_granularity: Optional time granularity to resample the data to. One of:
             "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
@@ -1166,21 +1175,35 @@ def get_multiple_fit_in_sample_df(
 
     # Add actual values
     if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
-        data_df = daily_df
+        data_df = pd.DataFrame(index=pd.to_datetime(input_data.date_strs))
+        if geo_idx != -1:
+            data_df["target"] = input_data.target_data[:, geo_idx]
+        else:
+            data_df["target"] = input_data.target_data
     else:
         time_granularity_to_resample_rule = {
             constants.GRANULARITY_WEEKLY: "W",
             constants.GRANULARITY_TWO_WEEKS: "2W",
             constants.GRANULARITY_FOUR_WEEKS: "4W",
         }
-        data_df = daily_df.resample(
-            time_granularity_to_resample_rule[data_to_fit.time_granularity],
-            closed="left",
-            label="left",
-        ).sum()
+        data_df = pd.DataFrame(index=pd.to_datetime(input_data.date_strs))
+        if geo_idx != -1:
+            data_df["target"] = input_data.target_data[:, geo_idx]
+        else:
+            data_df["target"] = input_data.target_data
+        # Resample to the desired granularity
+        data_df["target"] = (
+            data_df["target"]
+            .resample(
+                time_granularity_to_resample_rule[data_to_fit.time_granularity],
+                closed="left",
+                label="left",
+            )
+            .sum()
+        )
 
     df.index = data_df.index
-    df["actual"] = data_df[data_to_fit.target_col]
+    df["actual"] = data_df["target"]
 
     # Add moving average if requested
     if moving_avg_period > 0:
