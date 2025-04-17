@@ -2,6 +2,7 @@ from contextlib import redirect_stdout
 import json
 import math
 from typing import TypedDict
+from lightweight_mmm.lightweight_mmm import LightweightMMM
 import numpy as np
 import jax.numpy as jnp
 import pandas as pd
