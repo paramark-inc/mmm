@@ -2,6 +2,7 @@ from contextlib import redirect_stdout
 import json
 import math
 from typing import TypedDict
+from customer_reports.data.historical_predict import create_historical_predictions_daily_df
 from lightweight_mmm.lightweight_mmm import LightweightMMM
 import numpy as np
 import jax.numpy as jnp
@@ -868,6 +869,7 @@ def describe_mmm_training(
     degrees_seasonality: int,
     results_dir: str,
     include_response_curves=False,
+    config: dict = None,
 ) -> dict:
     """
     Plot and print diagnostic analyses of the MMM training data.
@@ -879,6 +881,7 @@ def describe_mmm_training(
     :param results_dir: directory to write plot files to
     :param include_response_curves: True to include response curves in the output, False otherwise.
         This is off by default because it is quite slow and appears to leak memory.
+    :param config: Configuration dictionary containing model settings
 
     :return: Summary of mmm training, e.g. coefficients, fit mape, media effect, etc.
     """
@@ -910,7 +913,7 @@ def describe_mmm_training(
     media_baseline_df = get_media_and_baseline_contribution_df(
         media_mix_model=mmm,
         data_to_fit=data_to_fit,
-        time_granularity=None,  # Use original time granularity
+        config=config,
     )
     media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
 
@@ -1067,7 +1070,7 @@ def get_fit_in_sample_df(
 def get_media_and_baseline_contribution_df(
     media_mix_model: LightweightMMM,
     data_to_fit: DataToFit,
-    time_granularity: str = None,
+    config: dict,
 ) -> pd.DataFrame:
     """
     Create a DataFrame containing the time series of media and baseline contributions.
@@ -1076,8 +1079,7 @@ def get_media_and_baseline_contribution_df(
     Args:
         media_mix_model: LightweightMMM instance
         data_to_fit: DataToFit instance
-        time_granularity: Optional time granularity to resample the data to. One of:
-            "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
+        config: yaml config
 
     Returns:
         DataFrame with columns:
@@ -1090,32 +1092,28 @@ def get_media_and_baseline_contribution_df(
             "Model needs to be fit first before attempting to get media and baseline contributions."
         )
 
-    # Get the media and baseline contributions
-    plot_df = create_media_baseline_contribution_df(
-        media_mix_model=media_mix_model,
-        target_scaler=data_to_fit.target_scaler,
-        channel_names=data_to_fit.media_names,
+    daily_predictions_df = create_historical_predictions_daily_df(
+        config, media_mix_model, data_to_fit
     )
 
-    # Convert to DataFrame with datetime index
-    df = pd.DataFrame()
-    df.index = pd.to_datetime(data_to_fit.date_strs[: len(plot_df)])
-
-    # Add baseline contribution
-    df["baseline:median"] = plot_df["baseline contribution"]
-
-    # Add each channel's contribution
-    for channel in data_to_fit.media_names:
-        df[f"{channel}:median"] = plot_df[f"{channel} contribution"]
-
-    # Resample if requested
-    if time_granularity is not None:
+    if "data_groupby" not in config or not config["data_groupby"]:
+        period_predictions_df = daily_predictions_df
+    else:
         data_groupby_to_resample_mode = {
             "week": "W",
             "two_weeks": "2W",
             "four_weeks": "4W",
         }
-        mode = data_groupby_to_resample_mode[time_granularity]
-        df = df.resample(mode, label="left", closed="left").sum()
+        mode = data_groupby_to_resample_mode[config["data_groupby"]]
+        period_predictions_df = daily_predictions_df.resample(
+            mode, label="left", closed="left"
+        ).sum()
 
-    return df
+    channel_names = [m["display_name"] for m in config["media"]]
+    # reverse the order of channel names to match lightweight mmm
+    channel_names.reverse()
+    channel_cols = [f"{c}:median" for c in channel_names]
+    cols = ["baseline:median"] + channel_cols
+
+    # Select only the columns we need and return the DataFrame
+    return period_predictions_df[cols]
