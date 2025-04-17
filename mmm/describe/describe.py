@@ -1067,7 +1067,6 @@ def get_fit_in_sample_df(
 def get_media_and_baseline_contribution_df(
     media_mix_model: LightweightMMM,
     data_to_fit: DataToFit,
-    config: dict,
     time_granularity: str = None,
 ) -> pd.DataFrame:
     """
@@ -1077,7 +1076,6 @@ def get_media_and_baseline_contribution_df(
     Args:
         media_mix_model: LightweightMMM instance
         data_to_fit: DataToFit instance
-        config: yaml config
         time_granularity: Optional time granularity to resample the data to. One of:
             "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
 
