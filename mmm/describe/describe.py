@@ -2,6 +2,8 @@ from contextlib import redirect_stdout
 import json
 import math
 from typing import TypedDict
+from customer_reports.data.historical_predict import create_historical_predictions_daily_df
+from lightweight_mmm.lightweight_mmm import LightweightMMM
 import numpy as np
 import jax.numpy as jnp
 import pandas as pd
@@ -24,7 +26,6 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
 
 from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
 
-from lightweight_mmm.lightweight_mmm import LightweightMMM
 from mmm.constants import constants
 from mmm.data.input_data import InputData
 from mmm.data.data_to_fit import DataToFit
@@ -868,6 +869,7 @@ def describe_mmm_training(
     degrees_seasonality: int,
     results_dir: str,
     include_response_curves=False,
+    config: dict = None,
 ) -> dict:
     """
     Plot and print diagnostic analyses of the MMM training data.
@@ -879,6 +881,7 @@ def describe_mmm_training(
     :param results_dir: directory to write plot files to
     :param include_response_curves: True to include response curves in the output, False otherwise.
         This is off by default because it is quite slow and appears to leak memory.
+    :param config: Configuration dictionary containing model settings
 
     :return: Summary of mmm training, e.g. coefficients, fit mape, media effect, etc.
     """
@@ -895,6 +898,24 @@ def describe_mmm_training(
         )
     else:
         baseline = None
+
+    # Get and save fit data
+    fit_df = get_fit_in_sample_df(
+        media_mix_model=mmm,
+        data_to_fit=data_to_fit,
+        input_data=input_data,
+        geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
+        time_granularity=None,  # Use original time granularity
+    )
+    fit_df.to_csv(os.path.join(results_dir, "fit_data.csv"))
+
+    # Get and save media and baseline contribution data
+    media_baseline_df = get_media_and_baseline_contribution_df(
+        media_mix_model=mmm,
+        data_to_fit=data_to_fit,
+        config=config,
+    )
+    media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
 
     summary = {
         "coefficients": coefficients,
@@ -943,3 +964,161 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         )
         output_fname = os.path.join(results_dir, "model_fit_out_of_sample.png")
         fig.savefig(output_fname, bbox_inches="tight")
+
+
+def get_fit_in_sample_df(
+    media_mix_model: LightweightMMM,
+    data_to_fit: DataToFit,
+    input_data: InputData,
+    geo_name: str = None,
+    time_granularity: str = None,
+) -> pd.DataFrame:
+    """
+    Create a DataFrame containing the actual and predicted values for a single model.
+
+    Args:
+        media_mix_model: LightweightMMM instance
+        data_to_fit: DataToFit instance
+        input_data: InputData instance containing the original data
+        geo_name: Optional geo name to filter on. If None, uses all geos.
+        time_granularity: Optional time granularity to resample the data to. One of:
+            "week", "two_weeks", "four_weeks". If None, uses the original time granularity.
+
+    Returns:
+        DataFrame with columns:
+            - date: datetime column
+            - actual: actual target values
+            - predicted:median: median predicted values
+            - predicted:lower: lower bound of predicted values (5th percentile)
+            - predicted:upper: upper bound of predicted values (95th percentile)
+    """
+    if not hasattr(media_mix_model, "trace"):
+        raise lightweight_mmm.NotFittedModelError(
+            "Model needs to be fit first before attempting to get fit data."
+        )
+
+    if data_to_fit.geo_names is not None and geo_name is None:
+        raise NotImplementedError("Getting aggregate fit across geos is not supported")
+
+    if geo_name is not None:
+        geo_idx = data_to_fit.geo_names.index(geo_name)
+    else:
+        geo_idx = -1
+
+    # Get posterior predictions
+    posterior_pred = media_mix_model.trace["mu"]
+    target_scaler = data_to_fit.target_scaler
+    posterior_pred = target_scaler.inverse_transform(posterior_pred)
+
+    if -1 != geo_idx:
+        posterior_pred = posterior_pred[:, :, geo_idx]
+
+    # Calculate summary statistics
+    predictions_median = np.median(posterior_pred, axis=0)
+    predictions_lower = np.percentile(posterior_pred, 5, axis=0)
+    predictions_upper = np.percentile(posterior_pred, 95, axis=0)
+
+    # Create DataFrame with datetime index
+    df = pd.DataFrame()
+    df.index = pd.to_datetime(data_to_fit.date_strs[: len(predictions_median)])
+    df["date"] = df.index  # Add date as a column
+
+    # Add actual values
+    if data_to_fit.time_granularity == constants.GRANULARITY_DAILY:
+        # For daily data, use the target data directly
+        if geo_idx != -1:
+            df["actual"] = input_data.target_data[:, geo_idx]
+        else:
+            df["actual"] = input_data.target_data
+    else:
+        # For non-daily data, we need to resample
+        time_granularity_to_resample_rule = {
+            constants.GRANULARITY_WEEKLY: "W",
+            constants.GRANULARITY_TWO_WEEKS: "2W",
+            constants.GRANULARITY_FOUR_WEEKS: "4W",
+        }
+        # Create a temporary daily DataFrame
+        daily_df = pd.DataFrame(index=pd.to_datetime(input_data.date_strs))
+        if geo_idx != -1:
+            daily_df["target"] = input_data.target_data[:, geo_idx]
+        else:
+            daily_df["target"] = input_data.target_data
+        # Resample to the desired granularity
+        df["actual"] = daily_df.resample(
+            time_granularity_to_resample_rule[data_to_fit.time_granularity],
+            closed="left",
+            label="left",
+        ).sum()["target"]
+
+    # Add predicted values
+    df["predicted:median"] = predictions_median
+    df["predicted:lower"] = predictions_lower
+    df["predicted:upper"] = predictions_upper
+
+    # Resample if requested
+    if time_granularity is not None:
+        data_groupby_to_resample_mode = {
+            "week": "W",
+            "two_weeks": "2W",
+            "four_weeks": "4W",
+        }
+        mode = data_groupby_to_resample_mode[time_granularity]
+        df = df.resample(mode, label="left", closed="left").sum()
+        df["date"] = df.index  # Re-add date as column after resampling
+
+    return df
+
+
+def get_media_and_baseline_contribution_df(
+    media_mix_model: LightweightMMM,
+    data_to_fit: DataToFit,
+    config: dict,
+) -> pd.DataFrame:
+    """
+    Create a DataFrame containing the time series of media and baseline contributions.
+    This version follows the same flow as plot_media_and_baseline but returns a DataFrame instead of plotting.
+
+    Args:
+        media_mix_model: LightweightMMM instance
+        data_to_fit: DataToFit instance
+        config: yaml config
+
+    Returns:
+        DataFrame with columns:
+            - date: datetime column
+            - baseline:median: baseline contribution
+            - {channel_name}:median: contribution for each media channel
+    """
+    if not hasattr(media_mix_model, "trace"):
+        raise lightweight_mmm.NotFittedModelError(
+            "Model needs to be fit first before attempting to get media and baseline contributions."
+        )
+
+    daily_predictions_df = create_historical_predictions_daily_df(
+        config, media_mix_model, data_to_fit
+    )
+
+    if "data_groupby" not in config or not config["data_groupby"]:
+        period_predictions_df = daily_predictions_df
+    else:
+        data_groupby_to_resample_mode = {
+            "week": "W",
+            "two_weeks": "2W",
+            "four_weeks": "4W",
+        }
+        mode = data_groupby_to_resample_mode[config["data_groupby"]]
+        period_predictions_df = daily_predictions_df.resample(
+            mode, label="left", closed="left"
+        ).sum()
+        period_predictions_df["date"] = (
+            period_predictions_df.index
+        )  # Add date as column after resampling
+
+    channel_names = [m["display_name"] for m in config["media"]]
+    # reverse the order of channel names to match lightweight mmm
+    channel_names.reverse()
+    channel_cols = [f"{c}:median" for c in channel_names]
+    cols = ["date", "baseline:median"] + channel_cols  # Include date in the columns to select
+
+    # Select only the columns we need and return the DataFrame
+    return period_predictions_df[cols]
