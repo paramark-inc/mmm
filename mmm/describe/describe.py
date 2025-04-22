@@ -899,23 +899,27 @@ def describe_mmm_training(
     else:
         baseline = None
 
-    # Get and save fit data
-    fit_df = get_fit_in_sample_df(
-        media_mix_model=mmm,
-        data_to_fit=data_to_fit,
-        input_data=input_data,
-        geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
-        time_granularity=None,  # Use original time granularity
-    )
-    fit_df.to_csv(os.path.join(results_dir, "fit_data.csv"))
+    # XXX for now do not generate fit data for hierarchical models
+    if data_to_fit.geo_names is None:
+        # Get and save fit data
+        fit_df = get_fit_in_sample_df(
+            media_mix_model=mmm,
+            data_to_fit=data_to_fit,
+            input_data=input_data,
+            geo_name=None,  # For now, we don't support geo filtering in describe_mmm_training
+            time_granularity=None,  # Use original time granularity
+        )
+        fit_df.to_csv(os.path.join(results_dir, "fit_data.csv"))
 
-    # Get and save media and baseline contribution data
-    media_baseline_df = get_media_and_baseline_contribution_df(
-        media_mix_model=mmm,
-        data_to_fit=data_to_fit,
-        config=config,
-    )
-    media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
+    # XXX for now do not generate fit data for hierarchical models
+    if data_to_fit.geo_names is None:
+        # Get and save media and baseline contribution data
+        media_baseline_df = get_media_and_baseline_contribution_df(
+            media_mix_model=mmm,
+            data_to_fit=data_to_fit,
+            config=config,
+        )
+        media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
 
     summary = {
         "coefficients": coefficients,
