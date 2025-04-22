@@ -899,8 +899,9 @@ def describe_mmm_training(
     else:
         baseline = None
 
-    # Get and save fit data
+    # XXX for now do not generate fit data for hierarchical models
     if data_to_fit.geo_names is None:
+        # Get and save fit data
         fit_df = get_fit_in_sample_df(
             media_mix_model=mmm,
             data_to_fit=data_to_fit,
