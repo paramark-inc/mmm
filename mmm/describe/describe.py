@@ -911,13 +911,15 @@ def describe_mmm_training(
         )
         fit_df.to_csv(os.path.join(results_dir, "fit_data.csv"))
 
-    # Get and save media and baseline contribution data
-    media_baseline_df = get_media_and_baseline_contribution_df(
-        media_mix_model=mmm,
-        data_to_fit=data_to_fit,
-        config=config,
-    )
-    media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
+    # XXX for now do not generate fit data for hierarchical models
+    if data_to_fit.geo_names is None:
+        # Get and save media and baseline contribution data
+        media_baseline_df = get_media_and_baseline_contribution_df(
+            media_mix_model=mmm,
+            data_to_fit=data_to_fit,
+            config=config,
+        )
+        media_baseline_df.to_csv(os.path.join(results_dir, "media_baseline_contribution.csv"))
 
     summary = {
         "coefficients": coefficients,
