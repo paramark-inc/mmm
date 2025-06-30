@@ -1,3 +1,5 @@
+# note that JAX imports are weird: jaxlib.xla_extension
+# is not available until jax.numpy has been imported
 import jax.numpy as jnp
 import jax
 import numpy as np
