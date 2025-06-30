@@ -10,6 +10,12 @@ This repo provides a wrapper around Google's lightweight_mmm (and in future, oth
 
 ## Setting up
 
+Initialize the submodules:
+
+```
+git submodule update --init --recursive
+```
+
 The easiest way to install dependencies is with a virtual environment:
 
 ```
