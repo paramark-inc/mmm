@@ -2,7 +2,7 @@ from contextlib import redirect_stdout
 import json
 import math
 from typing import TypedDict
-from customer_reports.data.historical_predict import create_historical_predictions_daily_df
+from mmm.data.historical_predict import create_historical_predictions_daily_df
 from lightweight_mmm.lightweight_mmm import LightweightMMM
 import numpy as np
 import jax.numpy as jnp
