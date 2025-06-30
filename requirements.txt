@@ -5,5 +5,7 @@ msgpack==1.0.7
 msgpack-numpy==0.4.8
 PyYAML==6.0.1
 
+pytest>=8.4
+
 # also install all of the lightweight_mmm dependencies
 -r impl/lightweight_mmm/requirements/requirements.txt
