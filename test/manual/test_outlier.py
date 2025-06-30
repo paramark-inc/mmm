@@ -2,6 +2,7 @@ import click
 import numpy as np
 import os
 import sys
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "impl", "lightweight_mmm"))
@@ -11,7 +12,8 @@ from mmm.data import InputData
 from mmm.outlier.outlier import print_outliers
 
 
-def test_print_outliers(output_dir):
+@pytest.mark.skip(reason="only for manual testing")
+def test_print_outliers(output_dir="/tmp/mmm_test"):
     media1_values = np.array(
         [
             1,

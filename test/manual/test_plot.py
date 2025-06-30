@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import random
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "impl", "lightweight_mmm"))
@@ -11,7 +12,6 @@ from mmm.constants import constants
 from mmm.data import InputData
 from mmm.plot.plot import plot_all_metrics
 
-
 def generate_rand_metric_values(num_observations):
     a = []
     for i in range(num_observations):
@@ -19,8 +19,8 @@ def generate_rand_metric_values(num_observations):
 
     return np.array(a, dtype=np.float64)
 
-
-def test_plot_all_metrics(output_dir):
+@pytest.mark.skip(reason="only for manual testing")
+def test_plot_all_metrics(output_dir="/tmp/mmm_test"):
     num_observations = 10
 
     metric1_values = generate_rand_metric_values(num_observations)

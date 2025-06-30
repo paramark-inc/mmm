@@ -7,5 +7,8 @@ PyYAML==6.0.1
 
 pytest>=8.4
 
+# Pin numpy to avoid compatibility issues with NumPy 2.x
+numpy<2
+
 # also install all of the lightweight_mmm dependencies
 -r impl/lightweight_mmm/requirements/requirements.txt
