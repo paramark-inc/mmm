@@ -101,7 +101,3 @@ class OutlierTestCase(unittest.TestCase):
 
         expected_target_data = np.array([9.0, 9.3, 11.0, 12.0], dtype=np.float64)
         assert_array_almost_equal(expected_target_data, input_data_outliers_removed.target_data)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -182,7 +182,3 @@ class InputDataTest(unittest.TestCase):
         self.assertAlmostEqual(
             input_data.media_data[:, 0].sum(), input_data_split_channel_1.media_data[:, 0].sum()
         )
-
-
-if __name__ == "__main__":
-    unittest.main()
