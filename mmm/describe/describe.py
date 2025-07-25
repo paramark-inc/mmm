@@ -1114,9 +1114,9 @@ def get_media_and_baseline_contribution_df(
         period_predictions_df = daily_predictions_df.resample(
             mode, label="left", closed="left"
         ).sum()
-        period_predictions_df["date"] = (
-            period_predictions_df.index
-        )  # Add date as column after resampling
+    period_predictions_df["date"] = (
+        period_predictions_df.index
+    )  # Add date as column after resampling
 
     channel_names = [m["display_name"] for m in config["media"]]
     # reverse the order of channel names to match lightweight mmm

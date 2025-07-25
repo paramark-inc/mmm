@@ -388,11 +388,12 @@ def create_historical_predictions_daily_df(
     daily_media_contribution_pct_st = name_to_breakdown["daily_media_contribution_pct_st"]
 
     first_day = pd.to_datetime(data_to_fit.date_strs[0])
-    if config["data_groupby"] == "week":
+    groupby = config.get("data_groupby", None)
+    if groupby == "week":
         last_day = pd.to_datetime(data_to_fit.date_strs[-1]) + pd.Timedelta(days=6)
-    elif config["data_groupby"] == "two_weeks":
+    elif groupby == "two_weeks":
         last_day = pd.to_datetime(data_to_fit.date_strs[-1]) + pd.Timedelta(days=13)
-    elif config["data_groupby"] == "four_weeks":
+    elif groupby == "four_weeks":
         last_day = pd.to_datetime(data_to_fit.date_strs[-1]) + pd.Timedelta(days=27)
     else:
         last_day = pd.to_datetime(data_to_fit.date_strs[-1])
