@@ -78,8 +78,14 @@ def _parse_csv_shared(
         end_date_config = "end_period_label"
 
     if start_date_config in config["data_rows"] and end_date_config in config["data_rows"]:
-        start = config["data_rows"][start_date_config].isoformat()
-        end = config["data_rows"][end_date_config].isoformat()
+        # with yaml we may have a string or already a datetime object
+        # if a string we assume it's already isoformat
+        if isinstance(config["data_rows"][start_date_config], str):
+           start = config["data_rows"][start_date_config]
+           end = config["data_rows"][end_date_config]
+        else:
+            start = config["data_rows"][start_date_config].isoformat()
+            end = config["data_rows"][end_date_config].isoformat()
 
         if has_geo:
             # Compute a slice that includes all geos but only dates between start and end
