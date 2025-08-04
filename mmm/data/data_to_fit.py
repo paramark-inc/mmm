@@ -31,7 +31,8 @@ class DataToFit:
         has_geo = input_data.geo_names is not None
         data_size = input_data.media_data.shape[0]
 
-        split_ratio = config.get("train_test_ratio", 0.9)
+        # if unset, use all data for training and no test data
+        split_ratio = config.get("train_test_ratio", 1.0)
         split_point = math.ceil(data_size * split_ratio)
 
         if has_geo:
