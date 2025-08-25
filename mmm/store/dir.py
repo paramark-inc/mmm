@@ -12,13 +12,13 @@ def generate_unique_date_key():
     return f"{yyyymmdd}-{seconds_since_midnight:05d}-{hextoken}"
 
 
-def make_results_dir(data_dir: str, dirname_fixed: str = "", results_key=None) -> str:
+def make_results_dir(data_dir: str, dirname_fixed: str = "", results_key=None) -> tuple[str, str]:
     """
     create a directory with a unique name for this mmm run
 
     :param data_dir: directory prefix
     :param dirname_fixed: (optional) fixed path suffix, e.g. for a project name or customer name
-    :return: directory name of form <data_dir>/results/<dirname_fixed>/<generated name>
+    :return: directory name of form <data_dir>/results/<dirname_fixed>/<generated name>, and the results key
     """
     if results_key is None:
         results_key = generate_unique_date_key()
@@ -27,4 +27,4 @@ def make_results_dir(data_dir: str, dirname_fixed: str = "", results_key=None) -
     print(f"Creating directory '{results_dir}' for output")
     os.makedirs(results_dir, exist_ok=False)
 
-    return results_dir
+    return results_dir, results_key
