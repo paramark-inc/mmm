@@ -531,7 +531,11 @@ class InputData:
             geo_names=self.geo_names,
         )
 
-    def clone_and_resample(self, time_granularity: str = constants.GRANULARITY_WEEKLY):
+    def clone_and_resample(
+        self,
+        time_granularity: str = None,
+        data_groupby: str = None,
+    ) -> "InputData":
         """
         Clone and resample daily data into groups of N weeks.
 
@@ -547,6 +551,25 @@ class InputData:
             new InputData instance, with resampled data.
 
         """
+
+        if time_granularity is not None and data_groupby is not None:
+            raise ValueError("Cannot specify both time_granularity and data_groupby parameters")
+
+        if time_granularity is None:
+            # if time_granularity is not specified, use data_groupby to determine the time_granularity
+            if data_groupby == "week":
+                time_granularity = constants.GRANULARITY_WEEKLY
+            elif data_groupby == "two_weeks":
+                time_granularity = constants.GRANULARITY_TWO_WEEKS
+            elif data_groupby == "four_weeks":
+                time_granularity = constants.GRANULARITY_FOUR_WEEKS
+            else:
+                time_granularity = constants.GRANULARITY_DAILY
+
+        ## No need to resample if already daily
+        if time_granularity == constants.GRANULARITY_DAILY:
+            return self
+
         assert (
             self.time_granularity == constants.GRANULARITY_DAILY
         ), "InputData has already been resampled"
