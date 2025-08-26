@@ -20,9 +20,6 @@ class MMMBaseDriver:
     def load_config(self, config_filename):
         return load_config(config_filename)
 
-    def init_output(self, data_dir: str = ".") -> str:
-        return make_results_dir(data_dir=data_dir)
-
     def ingest_data(self, input_path: str, config: dict) -> InputData:
         data_dict = parse_csv_generic(input_path, config)
         input_data = transform_input_generic(data_dict, config)
@@ -99,7 +96,7 @@ class MMMBaseDriver:
         config_raw, config = self.load_config(config_filename)
         current_commit = git_sha()
 
-        results_dir = self.init_output()
+        results_dir, results_key = make_results_dir(data_dir=".")
         input_data_raw = self.ingest_data(input_filename, config)
         input_data_processed = self.run_feature_engineering(input_data_raw, config)
         self.describe_data(
