@@ -24,4 +24,4 @@ def load_config(config_file: str) -> Tuple[bytes, dict]:
 
     except FileNotFoundError:
         logging.error(f"Couldn't load config file: {config_file}")
-        sys.exit(1)
+        raise
