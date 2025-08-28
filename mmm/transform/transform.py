@@ -259,10 +259,10 @@ def transform_input_generic(data_dict: dict, config: dict):
 
     unaccounted = column_names - matched_columns
     if len(unaccounted) > 0:
-        logging.error(
-            f"Input data contains columns that weren't accounted for: {' '.join(unaccounted)}"
-        )
-        sys.exit(1)
+        msg = f"Input data contains columns that weren't accounted for: {' '.join(unaccounted)}"
+        # log but also raise exception since this an invariant we don't want to violate
+        logging.error(msg)
+        raise ValueError(msg)
 
     return InputData(
         date_strs=np.array(data_dict[constants.KEY_DATE_STRS]),
