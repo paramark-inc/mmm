@@ -39,14 +39,21 @@ def fit_lightweight_mmm(
     else:
         extra_features = data_to_fit.extra_features_train_scaled
 
+    media_cost_priors_scaled = data_to_fit.media_cost_priors_scaled
+
+    # if learned_media_priors is 2D (when applying learned prior for specific geo),
+    # expand the media_cost_priors_scaled to the same shape
+    if data_to_fit.learned_media_priors.ndim == 2:
+        media_cost_priors_scaled = jnp.expand_dims(media_cost_priors_scaled, axis=-1)
+
     # when we have a learned_media_prior, use it.  Otherwise, use the media_cost_prior.
-    # This works for both 1D and 2D learned_media_priors regardless if media_cost_priors_scaled is 1D or 2D.
-    # If media_cost_priors_scaled is 1D, it will be broadcast to the shape of learned_media_priors.
     media_priors = jnp.where(
         data_to_fit.learned_media_priors > 0.0,
         data_to_fit.learned_media_priors,
-        data_to_fit.media_cost_priors_scaled,
+        media_cost_priors_scaled,
     )
+
+    print(f"media_priors={media_priors}")
 
     fit_params = {
         "baseline_positivity_constraint": config.get("force_positive_baseline", False),
