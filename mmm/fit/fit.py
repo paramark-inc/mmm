@@ -39,18 +39,21 @@ def fit_lightweight_mmm(
     else:
         extra_features = data_to_fit.extra_features_train_scaled
 
+    media_cost_priors_scaled = data_to_fit.media_cost_priors_scaled
+
+    # if learned_media_priors is 2D (when applying learned prior for specific geo),
+    # expand the media_cost_priors_scaled to the same shape
+    if data_to_fit.learned_media_priors.ndim == 2:
+        media_cost_priors_scaled = jnp.expand_dims(media_cost_priors_scaled, axis=-1)
+
     # when we have a learned_media_prior, use it.  Otherwise, use the media_cost_prior.
     media_priors = jnp.where(
         data_to_fit.learned_media_priors > 0.0,
         data_to_fit.learned_media_priors,
-        data_to_fit.media_cost_priors_scaled,
+        media_cost_priors_scaled,
     )
 
-    learned_media_priors_count = len(
-        [p for p in data_to_fit.learned_media_priors.tolist() if p > 0.0]
-    )
-    if learned_media_priors_count > 0:
-        print(f"setting learned media priors for {learned_media_priors_count} channels")
+    print(f"media_priors={media_priors}")
 
     fit_params = {
         "baseline_positivity_constraint": config.get("force_positive_baseline", False),
@@ -80,7 +83,9 @@ def fit_lightweight_mmm(
 
     if config.get("weekday_seasonality") is None:
         fit_params["weekday_seasonality"] = (
-            True if data_to_fit.time_granularity == constants.GRANULARITY_DAILY else False
+            True
+            if data_to_fit.time_granularity == constants.GRANULARITY_DAILY
+            else False
         )
     else:
         fit_params["weekday_seasonality"] = config.get("weekday_seasonality")
@@ -102,7 +107,9 @@ def fit_lightweight_mmm(
     custom_priors = None
     if fit_params["custom_priors"] is not None:
         custom_priors = {}
-        print(f"setting custom_priors for {', '.join(fit_params['custom_priors'].keys())}")
+        print(
+            f"setting custom_priors for {', '.join(fit_params['custom_priors'].keys())}"
+        )
 
         for name, definition in fit_params["custom_priors"].items():
             # Handle case where definition is a list of distributions
@@ -133,7 +140,9 @@ def fit_lightweight_mmm(
             # Handle case where definition is a single distribution
             else:
                 if definition["type"] == "halfnormal":
-                    custom_priors[name] = numpyro.distributions.HalfNormal(definition["scale"])
+                    custom_priors[name] = numpyro.distributions.HalfNormal(
+                        definition["scale"]
+                    )
                 elif definition["type"] == "normal":
                     custom_priors[name] = numpyro.distributions.Normal(
                         definition["loc"], definition["scale"]

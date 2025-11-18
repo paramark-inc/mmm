@@ -41,41 +41,56 @@ class InputData:
             constants.GRANULARITY_FOUR_WEEKS,
         ), f"{time_granularity}"
 
-        assert num_observations == media_data.shape[0], f"{num_observations} {media_data.shape[0]}"
+        assert num_observations == media_data.shape[0], (
+            f"{num_observations} {media_data.shape[0]}"
+        )
         num_channels = media_data.shape[1]
         assert np.float64 == media_data.dtype, f"{np.float64} {media_data.dtype}"
 
         assert 1 == media_costs.ndim, f"{media_costs.ndim}"
-        assert num_channels == media_costs.shape[0], f"{num_channels} {media_costs.shape[0]}"
+        assert num_channels == media_costs.shape[0], (
+            f"{num_channels} {media_costs.shape[0]}"
+        )
         assert np.float64 == media_costs.dtype, f"{np.float64} {media_costs.dtype}"
 
         assert 1 == media_cost_priors.ndim, f"{media_cost_priors.ndim}"
-        assert (
-            num_channels == media_cost_priors.shape[0]
-        ), f"{num_channels} {media_cost_priors.shape[0]}"
-        assert np.float64 == media_cost_priors.dtype, f"{np.float64} {media_cost_priors.dtype}"
+        assert num_channels == media_cost_priors.shape[0], (
+            f"{num_channels} {media_cost_priors.shape[0]}"
+        )
+        assert np.float64 == media_cost_priors.dtype, (
+            f"{np.float64} {media_cost_priors.dtype}"
+        )
         # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
         # constraint on all values.
         for idx, prior in np.ndenumerate(media_cost_priors):
-            assert (
-                prior > 0.0 or learned_media_priors[idx] > 0.0
-            ), f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified. Make sure this channel's cost column has non-zero and non-NaN values."
+            if prior > 0.0:
+                continue
+            if learned_media_priors.ndim == 1:
+                assert learned_media_priors[idx] > 0.0, (
+                    f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified. Make sure this channel's cost column has non-zero and non-NaN values."
+                )
+            elif learned_media_priors.ndim == 2:
+                assert np.all(learned_media_priors[idx] > 0.0), (
+                    f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified for all geos. Make sure this channel's cost column has non-zero and non-NaN values, or specify learned priors for all geos."
+                )
+            else:
+                raise AssertionError("learned_media_priors must be a 1D or 2D array.")
 
         assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
 
         num_extra_features = extra_features_data.shape[1]
         if num_extra_features:
-            assert (
-                num_observations == extra_features_data.shape[0]
-            ), f"{num_observations} {extra_features_data.shape[0]}"
+            assert num_observations == extra_features_data.shape[0], (
+                f"{num_observations} {extra_features_data.shape[0]}"
+            )
 
-        assert num_extra_features == len(
-            extra_features_names
-        ), f"{num_extra_features} {len(extra_features_names)}"
+        assert num_extra_features == len(extra_features_names), (
+            f"{num_extra_features} {len(extra_features_names)}"
+        )
 
-        assert (
-            num_observations == target_data.shape[0]
-        ), f"{num_observations} {target_data.shape[0]}"
+        assert num_observations == target_data.shape[0], (
+            f"{num_observations} {target_data.shape[0]}"
+        )
         assert np.float64 == target_data.dtype, f"{np.float64} {target_data.dtype}"
 
         assert target_name
@@ -87,7 +102,9 @@ class InputData:
         else:
             assert 3 == media_data.ndim, f"{media_data.ndim}"
             assert 3 == extra_features_data.ndim, f"{extra_features_data.ndim}"
-            assert len(geo_names) == media_data.shape[2], f"{geo_names} != {media_data.shape[2]}"
+            assert len(geo_names) == media_data.shape[2], (
+                f"{geo_names} != {media_data.shape[2]}"
+            )
             assert 2 == target_data.ndim, f"{target_data.ndim}"
 
     @staticmethod
@@ -166,7 +183,7 @@ class InputData:
         :param media_cost_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
                              be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
                              it makes sense to use a different value as the prior.
-        :param learned_media_priors: 1-d array of float64 media prior [channel].  These priors will override the cost
+        :param learned_media_priors: 1-d array (or 2-d array for geo models) of float64 media prior [channel] or [channel, geo].  These priors will override the cost
                              priors when provided (i.e. > 0.).  These may be informed by an experiment or
                              an MMM run on an earlier period.  These values will be provided directly to
                              LightweightMMM without any scaling.
@@ -227,7 +244,9 @@ class InputData:
         :return:
         """
 
-        with open(os.path.join(output_dir, f"data_{suffix}_summary.txt"), "w") as summary_file:
+        with open(
+            os.path.join(output_dir, f"data_{suffix}_summary.txt"), "w"
+        ) as summary_file:
             summary_file.write(f"time_granularity={self.time_granularity}\n")
             summary_file.write(f"\nmedia_names:\n")
             for idx, media_name in enumerate(self.media_names):
@@ -238,7 +257,9 @@ class InputData:
                     summary_file.write(f"geo_names[{idx}]={geo_name}\n")
             summary_file.write(f"\nextra_features_names:\n")
             for idx, extra_features_name in enumerate(self.extra_features_names):
-                summary_file.write(f"extra_features_names[{idx}]={extra_features_name}\n")
+                summary_file.write(
+                    f"extra_features_names[{idx}]={extra_features_name}\n"
+                )
             summary_file.write("\nmedia_costs:\n")
             for idx, media_cost in enumerate(self.media_costs):
                 summary_file.write(f"media_costs[{idx}]={media_cost:,.2f}\n")
@@ -247,20 +268,34 @@ class InputData:
                 summary_file.write(f"media_priors[{idx}]={media_prior:,.2f}\n")
             summary_file.write("\nmedia_cost_priors:\n")
             for idx, learned_prior in enumerate(self.learned_media_priors):
-                summary_file.write(f"learned_media_priors[{idx}]={learned_prior:,.2f}\n")
+                if self.learned_media_priors.ndim == 2:
+                    for geo_idx, geo_prior in enumerate(learned_prior):
+                        summary_file.write(
+                            f"learned_media_priors[{idx}][{geo_idx}]={geo_prior:,.2f}\n"
+                        )
+                else:
+                    summary_file.write(
+                        f"learned_media_priors[{idx}]={learned_prior:,.2f}\n"
+                    )
             summary_file.write(f"\ntarget_name={self.target_name}\n")
             summary_file.write(f"\ntarget_is_log_scale={self.target_is_log_scale}\n")
 
         if verbose:
-            with open(os.path.join(output_dir, f"data_{suffix}_dates.txt"), "w") as dates_file:
+            with open(
+                os.path.join(output_dir, f"data_{suffix}_dates.txt"), "w"
+            ) as dates_file:
                 for idx, dstr in enumerate(self.date_strs):
                     dates_file.write(f"date_strs[{idx:>3}]={dstr:>10}\n")
 
             # Just being lazy: this code works for national models only
             if self.geo_names is not None:
                 for media_idx, media_name in enumerate(self.media_names):
-                    media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}.txt"
-                    with open(os.path.join(output_dir, media_fname), "w") as media_data_file:
+                    media_fname = (
+                        f"data_{suffix}_{InputData._sanitize_name(media_name)}.txt"
+                    )
+                    with open(
+                        os.path.join(output_dir, media_fname), "w"
+                    ) as media_data_file:
                         for idx, val in enumerate(self.media_data[:, media_idx]):
                             dstr = self.date_strs[idx]
                             media_data_file.write(
@@ -269,21 +304,27 @@ class InputData:
 
                 for media_idx, media_name in enumerate(self.media_names):
                     media_fname = f"data_{suffix}_{InputData._sanitize_name(media_name)}_costs.txt"
-                    with open(os.path.join(output_dir, media_fname), "w") as media_costs_file:
-                        for idx, val in enumerate(self.media_costs_by_row[:, media_idx]):
+                    with open(
+                        os.path.join(output_dir, media_fname), "w"
+                    ) as media_costs_file:
+                        for idx, val in enumerate(
+                            self.media_costs_by_row[:, media_idx]
+                        ):
                             dstr = self.date_strs[idx]
                             media_costs_file.write(
                                 f"media_costs_by_row[{idx:>3}][{media_idx}]({dstr:>10})={val:,.2f}\n"
                             )
 
-                for extra_features_idx, extra_features_name in enumerate(self.extra_features_names):
-                    extra_features_fname = (
-                        f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
-                    )
+                for extra_features_idx, extra_features_name in enumerate(
+                    self.extra_features_names
+                ):
+                    extra_features_fname = f"data_{suffix}_{InputData._sanitize_name(extra_features_name)}.txt"
                     with open(
                         os.path.join(output_dir, extra_features_fname), "w"
                     ) as extra_features_file:
-                        for idx, val in enumerate(self.extra_features_data[:, extra_features_idx]):
+                        for idx, val in enumerate(
+                            self.extra_features_data[:, extra_features_idx]
+                        ):
                             dstr = self.date_strs[idx]
                             extra_features_file.write(
                                 f"extra_features_data[{extra_features_idx:>3}][{idx}]({dstr:>10})={val:,.2f}\n"
@@ -294,7 +335,9 @@ class InputData:
                 ) as target_file:
                     for idx, val in enumerate(self.target_data):
                         dstr = self.date_strs[idx]
-                        target_file.write(f"target_data[{idx:>3}]({dstr:>10})={val:,.2f}\n")
+                        target_file.write(
+                            f"target_data[{idx:>3}]({dstr:>10})={val:,.2f}\n"
+                        )
 
     def clone_and_add_extra_features(self, feature_names, feature_data):
         """
@@ -385,7 +428,9 @@ class InputData:
             ]
         )
         extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
-        extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
+        extra_features_df_resampled = extra_features_df_daily.groupby(
+            by=group_func
+        ).sum()
 
         target_data_dict = {self.target_name: self.target_data}
         target_df_daily = pd.DataFrame(data=target_data_dict)
@@ -473,7 +518,9 @@ class InputData:
                 ]
             )
             extra_features_df_daily = pd.DataFrame(data=extra_features_data_dict)
-            extra_features_df_resampled = extra_features_df_daily.groupby(by=group_func).sum()
+            extra_features_df_resampled = extra_features_df_daily.groupby(
+                by=group_func
+            ).sum()
 
             target_data_dict = {self.target_name: self.target_data[:, geo_idx]}
             target_df_daily = pd.DataFrame(data=target_data_dict)
@@ -488,7 +535,9 @@ class InputData:
             extra_features_data = (
                 extra_features_df_resampled.to_numpy()
                 if extra_features_df_resampled.shape[1]
-                else np.ndarray(shape=(media_df_resampled.shape[0], 0), dtype=np.float64)
+                else np.ndarray(
+                    shape=(media_df_resampled.shape[0], 0), dtype=np.float64
+                )
             )
 
             # lazy init the per-observation numpy arrays now that we've done the aggregation
@@ -502,14 +551,17 @@ class InputData:
                     shape=(num_observations, num_channels, num_geos), dtype=np.float64
                 )
                 extra_features_data_resampled = np.zeros(
-                    shape=(num_observations, num_extra_features, num_geos), dtype=np.float64
+                    shape=(num_observations, num_extra_features, num_geos),
+                    dtype=np.float64,
                 )
                 target_data_resampled = np.zeros(
                     shape=(num_observations, num_geos), dtype=np.float64
                 )
 
             media_data_resampled[:, :, geo_idx] = media_df_resampled.to_numpy()
-            media_costs_by_row_resampled[:, :, geo_idx] = media_costs_df_resampled.to_numpy()
+            media_costs_by_row_resampled[:, :, geo_idx] = (
+                media_costs_df_resampled.to_numpy()
+            )
             extra_features_data_resampled[:, :, geo_idx] = extra_features_data
             # DataFrame returns a 2D array even when there's only one column
             target_data_resampled[:, geo_idx] = target_df_resampled.to_numpy()[:, 0]
@@ -553,7 +605,9 @@ class InputData:
         """
 
         if time_granularity is not None and data_groupby is not None:
-            raise ValueError("Cannot specify both time_granularity and data_groupby parameters")
+            raise ValueError(
+                "Cannot specify both time_granularity and data_groupby parameters"
+            )
 
         if time_granularity is None:
             # if time_granularity is not specified, use data_groupby to determine the time_granularity
@@ -570,9 +624,9 @@ class InputData:
         if time_granularity == constants.GRANULARITY_DAILY:
             return self
 
-        assert (
-            self.time_granularity == constants.GRANULARITY_DAILY
-        ), "InputData has already been resampled"
+        assert self.time_granularity == constants.GRANULARITY_DAILY, (
+            "InputData has already been resampled"
+        )
 
         if time_granularity == constants.GRANULARITY_WEEKLY:
             group_days = 7
@@ -584,7 +638,9 @@ class InputData:
             group_days = 28
             group_func = InputData._group_by_four_weeks
         else:
-            raise ValueError(f"Unexpecteed value for time_granularity={time_granularity}")
+            raise ValueError(
+                f"Unexpecteed value for time_granularity={time_granularity}"
+            )
 
         # we need to trim one partial week off the end if the data is not an even number of N weeks
         needs_cut_last = False if self.media_data.shape[0] % group_days == 0 else True
@@ -597,7 +653,11 @@ class InputData:
             )
         else:
             return self._clone_and_resample_helper_geo(
-                time_granularity, date_strs_resampled, needs_cut_last, group_func, group_days
+                time_granularity,
+                date_strs_resampled,
+                needs_cut_last,
+                group_func,
+                group_days,
             )
 
     def clone_and_log_transform_target_data(self):
@@ -654,24 +714,33 @@ class InputData:
         media_data_after_column = self.media_data[:, channel_idx].copy()
         media_data_after_column[:split_obs_idx] = 0.0
 
-        media_data = np.zeros(shape=(self.media_data.shape[0], self.media_data.shape[1] + 1))
+        media_data = np.zeros(
+            shape=(self.media_data.shape[0], self.media_data.shape[1] + 1)
+        )
         media_data[:, :channel_idx] = self.media_data[:, :channel_idx]
         media_data[:, channel_idx] = media_data_before_column
         media_data[:, channel_idx + 1] = media_data_after_column
         media_data[:, channel_idx + 2 :] = self.media_data[:, channel_idx + 1 :]
 
-        media_costs_by_row_before_column = self.media_costs_by_row[:, channel_idx].copy()
+        media_costs_by_row_before_column = self.media_costs_by_row[
+            :, channel_idx
+        ].copy()
         media_costs_by_row_before_column[split_obs_idx:] = 0.0
         media_costs_by_row_after_column = self.media_costs_by_row[:, channel_idx].copy()
         media_costs_by_row_after_column[:split_obs_idx] = 0.0
 
         media_costs_by_row = np.zeros(
-            shape=(self.media_costs_by_row.shape[0], self.media_costs_by_row.shape[1] + 1)
+            shape=(
+                self.media_costs_by_row.shape[0],
+                self.media_costs_by_row.shape[1] + 1,
+            )
         )
         media_costs_by_row[:, :channel_idx] = self.media_costs_by_row[:, :channel_idx]
         media_costs_by_row[:, channel_idx] = media_costs_by_row_before_column
         media_costs_by_row[:, channel_idx + 1] = media_costs_by_row_after_column
-        media_costs_by_row[:, channel_idx + 2 :] = self.media_costs_by_row[:, channel_idx + 1 :]
+        media_costs_by_row[:, channel_idx + 2 :] = self.media_costs_by_row[
+            :, channel_idx + 1 :
+        ]
 
         media_costs = np.zeros(shape=(self.media_costs.shape[0] + 1,))
         media_costs[:channel_idx] = self.media_costs[:channel_idx]
@@ -685,7 +754,9 @@ class InputData:
         # column.  This is technically incorrect, but since priors do not directly impact the results, presumably
         # good enough.
         split_point_pct = split_obs_idx / self.media_data.shape[0]
-        media_cost_priors[channel_idx] = self.media_cost_priors[channel_idx] * split_point_pct
+        media_cost_priors[channel_idx] = (
+            self.media_cost_priors[channel_idx] * split_point_pct
+        )
         media_cost_priors[channel_idx + 1] = self.media_cost_priors[channel_idx] * (
             1 - split_point_pct
         )

@@ -68,7 +68,9 @@ def _copy_cost_values_to_media_costs(
     if -1 == geo_index:
         media_costs_by_row[:, channel_index] = metric_values_spend.astype(np.float64)
     else:
-        media_costs_by_row[:, channel_index, geo_index] = metric_values_spend.astype(np.float64)
+        media_costs_by_row[:, channel_index, geo_index] = metric_values_spend.astype(
+            np.float64
+        )
 
 
 def transform_input_generic(data_dict: dict, config: dict):
@@ -122,7 +124,6 @@ def transform_input_generic(data_dict: dict, config: dict):
     # dimensions [channels] only.
     media_costs = np.zeros(shape=num_media_channels, dtype=np.float64)
     media_cost_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
-    learned_media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
 
     # media_costs_by_row has dimensions [observations, channels] / [observations, channels, geos]
     if has_geo_data:
@@ -130,11 +131,16 @@ def transform_input_generic(data_dict: dict, config: dict):
             shape=(num_observations, num_media_channels, num_geos),
             dtype=np.float64,
         )
+        learned_media_priors = np.zeros(
+            shape=(num_media_channels, num_geos), dtype=np.float64
+        )
+
     else:
         media_costs_by_row = np.zeros(
             shape=(num_observations, num_media_channels),
             dtype=np.float64,
         )
+        learned_media_priors = np.zeros(shape=num_media_channels, dtype=np.float64)
 
     extra_features_names = config.get("extra_features_cols", [])
     num_extra_features = len(extra_features_names)
@@ -237,9 +243,13 @@ def transform_input_generic(data_dict: dict, config: dict):
     for metric_name in column_names:
         if metric_name == config.get("target_col"):
             if has_geo_data:
-                target_data = np.ndarray(shape=(num_observations, num_geos), dtype=np.float64)
+                target_data = np.ndarray(
+                    shape=(num_observations, num_geos), dtype=np.float64
+                )
                 for geo_idx, geo_name in enumerate(geo_names):
-                    target_data[:, geo_idx] = metric_data[geo_name][metric_name].astype(np.float64)
+                    target_data[:, geo_idx] = metric_data[geo_name][metric_name].astype(
+                        np.float64
+                    )
             else:
                 target_data = metric_data[metric_name].astype(np.float64)
             matched_columns.add(metric_name)
@@ -248,13 +258,13 @@ def transform_input_generic(data_dict: dict, config: dict):
             extra_features_idx = extra_features_names.index(metric_name)
             if has_geo_data:
                 for geo_idx, geo_name in enumerate(geo_names):
-                    extra_features_data[:, extra_features_idx, geo_idx] = metric_data[geo_name][
-                        metric_name
-                    ].astype(np.float64)
+                    extra_features_data[:, extra_features_idx, geo_idx] = metric_data[
+                        geo_name
+                    ][metric_name].astype(np.float64)
             else:
-                extra_features_data[:, extra_features_idx] = metric_data[metric_name].astype(
-                    np.float64
-                )
+                extra_features_data[:, extra_features_idx] = metric_data[
+                    metric_name
+                ].astype(np.float64)
             matched_columns.add(metric_name)
 
     unaccounted = column_names - matched_columns
