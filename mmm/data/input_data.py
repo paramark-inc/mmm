@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 import types
 from collections import OrderedDict
+from typing import Literal
 import numpy as np
 import os
 import pandas as pd
@@ -7,6 +9,7 @@ import pandas as pd
 from mmm.constants import constants
 
 
+@dataclass
 class InputData:
     """
     encapsulation of data fed into the marketing mix model - both the marketing metrics and the sales metrics
@@ -17,95 +20,39 @@ class InputData:
     all values are true values (i.e. not scaled down for feeding into the MMM)
     """
 
-    @staticmethod
-    def _validate(
-        date_strs,
-        time_granularity,
-        media_data,
-        media_costs,
-        media_cost_priors,
-        learned_media_priors,
-        media_names,
-        extra_features_data,
-        extra_features_names,
-        target_data,
-        target_name,
-        geo_names,
-    ):
-        num_observations = date_strs.shape[0]
-
-        assert time_granularity in (
-            constants.GRANULARITY_DAILY,
-            constants.GRANULARITY_WEEKLY,
-            constants.GRANULARITY_TWO_WEEKS,
-            constants.GRANULARITY_FOUR_WEEKS,
-        ), f"{time_granularity}"
-
-        assert num_observations == media_data.shape[0], (
-            f"{num_observations} {media_data.shape[0]}"
-        )
-        num_channels = media_data.shape[1]
-        assert np.float64 == media_data.dtype, f"{np.float64} {media_data.dtype}"
-
-        assert 1 == media_costs.ndim, f"{media_costs.ndim}"
-        assert num_channels == media_costs.shape[0], (
-            f"{num_channels} {media_costs.shape[0]}"
-        )
-        assert np.float64 == media_costs.dtype, f"{np.float64} {media_costs.dtype}"
-
-        assert 1 == media_cost_priors.ndim, f"{media_cost_priors.ndim}"
-        assert num_channels == media_cost_priors.shape[0], (
-            f"{num_channels} {media_cost_priors.shape[0]}"
-        )
-        assert np.float64 == media_cost_priors.dtype, (
-            f"{np.float64} {media_cost_priors.dtype}"
-        )
-        # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
-        # constraint on all values.
-        for idx, prior in np.ndenumerate(media_cost_priors):
-            if prior > 0.0:
-                continue
-            if learned_media_priors.ndim == 1:
-                assert learned_media_priors[idx] > 0.0, (
-                    f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified. Make sure this channel's cost column has non-zero and non-NaN values."
-                )
-            elif learned_media_priors.ndim == 2:
-                assert np.all(learned_media_priors[idx] > 0.0), (
-                    f"Media channel {media_names[idx[0]]} has a zero cost prior and no learned prior was specified for all geos. Make sure this channel's cost column has non-zero and non-NaN values, or specify learned priors for all geos."
-                )
-            else:
-                raise AssertionError("learned_media_priors must be a 1D or 2D array.")
-
-        assert num_channels == len(media_names), f"{num_channels} {len(media_names)}"
-
-        num_extra_features = extra_features_data.shape[1]
-        if num_extra_features:
-            assert num_observations == extra_features_data.shape[0], (
-                f"{num_observations} {extra_features_data.shape[0]}"
-            )
-
-        assert num_extra_features == len(extra_features_names), (
-            f"{num_extra_features} {len(extra_features_names)}"
-        )
-
-        assert num_observations == target_data.shape[0], (
-            f"{num_observations} {target_data.shape[0]}"
-        )
-        assert np.float64 == target_data.dtype, f"{np.float64} {target_data.dtype}"
-
-        assert target_name
-
-        if geo_names is None:
-            assert 2 == media_data.ndim, f"{media_data.ndim}"
-            assert 2 == extra_features_data.ndim, f"{extra_features_data.ndim}"
-            assert 1 == target_data.ndim, f"{target_data.ndim}"
-        else:
-            assert 3 == media_data.ndim, f"{media_data.ndim}"
-            assert 3 == extra_features_data.ndim, f"{extra_features_data.ndim}"
-            assert len(geo_names) == media_data.shape[2], (
-                f"{geo_names} != {media_data.shape[2]}"
-            )
-            assert 2 == target_data.ndim, f"{target_data.ndim}"
+    # 1-d numpy array of date strings, one per observation (e.g. per row)
+    date_strs: np.ndarray
+    # String indicating the time granularity (e.g., "daily", "weekly", etc.)
+    time_granularity: Literal[
+        "daily",
+        "weekly",
+        "two_weeks",
+        "four_weeks",
+    ]
+    # Media data values: numpy array, shape [time, channel] or [time, channel, geo]
+    media_data: np.ndarray
+    # 1-d numpy array of total media costs per channel
+    media_costs: np.ndarray
+    # Media costs per observation: numpy array, shape [time, channel] or [time, channel, geo]
+    media_costs_by_row: np.ndarray
+    # 1-d numpy array of cost priors per channel
+    media_cost_priors: np.ndarray
+    # Learned priors per channel (or channel x geo), overrides cost priors if given
+    learned_media_priors: np.ndarray
+    # List of media channel names
+    media_names: list
+    # Extra feature values, shape [time, feature] or [time, feature, geo]
+    extra_features_data: np.ndarray
+    # List of extra feature names
+    extra_features_names: list
+    # Target metric values, shape [time] or [time, geo]
+    target_data: np.ndarray
+    # Indicates if target metric is on log scale (True = log scale)
+    target_is_log_scale: bool
+    # Name of the target metric
+    target_name: str
+    # List of geo names, or None if national model
+    geo_names: list | None
 
     @staticmethod
     def clone_with_data_edits(input_data, editor_func, context):
@@ -153,79 +100,6 @@ class InputData:
             geo_names=input_data.geo_names,
         )
 
-    # TODO change dates from strings to numpy datetimes to ensure common formatting
-    def __init__(
-        self,
-        date_strs,
-        time_granularity,
-        media_data,
-        media_costs,
-        media_costs_by_row,
-        media_cost_priors,
-        learned_media_priors,
-        media_names,
-        extra_features_data,
-        extra_features_names,
-        target_data,
-        target_is_log_scale,
-        target_name,
-        geo_names,
-    ):
-        """
-        :param date_strs: 1-d numpy array of labels for each time series data point
-        :param time_granularity: string constant describing the granularity of the time series data (
-                                 constants.GRANULARITY_DAILY, constants.GRANULARITY_WEEKLY, etc.)
-        :param media_data: numpy array of float64 media data values [time,channel] or
-                           [time, channel, geo]
-        :param media_costs: 1-d numpy array of float64 total media costs [channel]
-        :param media_costs_by_row: numpy array of float 64 media costs per day [time, channel] or
-                                   [time, channel, geo]
-        :param media_cost_priors: 1-d numpy array of float64 media prior [channel].  For most forms of paid media this will
-                             be equivalent to the costs.  However, in cases where the actual cost is zero or very small,
-                             it makes sense to use a different value as the prior.
-        :param learned_media_priors: 1-d array (or 2-d array for geo models) of float64 media prior [channel] or [channel, geo].  These priors will override the cost
-                             priors when provided (i.e. > 0.).  These may be informed by an experiment or
-                             an MMM run on an earlier period.  These values will be provided directly to
-                             LightweightMMM without any scaling.
-        :param media_names: list of media channel names
-        :param extra_features_data: numpy array of float64 extra feature values [time, channel] or
-                                    [time, channel, geo]
-        :param extra_features_names: list of extra feature names
-        :param target_data: numpy array of float64 target metric values with dims [time] or [time, geo]
-        :param target_is_log_scale: True if target metric is log scale, False otherwise
-        :param target_name: name of target metric
-        :param geo_names: list of geo names, or None for a national model
-        """
-        InputData._validate(
-            date_strs=date_strs,
-            time_granularity=time_granularity,
-            media_data=media_data,
-            media_costs=media_costs,
-            media_cost_priors=media_cost_priors,
-            learned_media_priors=learned_media_priors,
-            media_names=media_names,
-            extra_features_data=extra_features_data,
-            extra_features_names=extra_features_names,
-            target_data=target_data,
-            target_name=target_name,
-            geo_names=geo_names,
-        )
-
-        self.geo_names = geo_names
-        self.date_strs = date_strs
-        self.time_granularity = time_granularity
-        self.media_data = media_data
-        self.media_costs = media_costs
-        self.media_costs_by_row = media_costs_by_row
-        self.media_cost_priors = media_cost_priors
-        self.learned_media_priors = learned_media_priors
-        self.media_names = media_names
-        self.extra_features_data = extra_features_data
-        self.extra_features_names = extra_features_names
-        self.target_data = target_data
-        self.target_name = target_name
-        self.target_is_log_scale = target_is_log_scale
-
     @staticmethod
     def _sanitize_name(media_name):
         """
@@ -234,6 +108,95 @@ class InputData:
         :return: sanititized name
         """
         return media_name.lower().replace(" ", "_").replace("(", "").replace(")", "")
+
+    # Validate the input data
+    def __post_init__(self) -> None:
+        num_observations = self.date_strs.shape[0]
+
+        assert self.time_granularity in (
+            constants.GRANULARITY_DAILY,
+            constants.GRANULARITY_WEEKLY,
+            constants.GRANULARITY_TWO_WEEKS,
+            constants.GRANULARITY_FOUR_WEEKS,
+        ), f"{self.time_granularity}"
+
+        assert num_observations == self.media_data.shape[0], (
+            f"{num_observations} {self.media_data.shape[0]}"
+        )
+        num_channels = self.media_data.shape[1]
+        assert np.float64 == self.media_data.dtype, (
+            f"{np.float64} {self.media_data.dtype}"
+        )
+
+        assert 1 == self.media_costs.ndim, f"{self.media_costs.ndim}"
+        assert num_channels == self.media_costs.shape[0], (
+            f"{num_channels} {self.media_costs.shape[0]}"
+        )
+        assert np.float64 == self.media_costs.dtype, (
+            f"{np.float64} {self.media_costs.dtype}"
+        )
+
+        assert 1 == self.media_cost_priors.ndim, f"{self.media_cost_priors.ndim}"
+        assert num_channels == self.media_cost_priors.shape[0], (
+            f"{num_channels} {self.media_cost_priors.shape[0]}"
+        )
+        assert np.float64 == self.media_cost_priors.dtype, (
+            f"{np.float64} {self.media_cost_priors.dtype}"
+        )
+        # lightweightMMM requires that media priors are > 0 by virtue of using HalfNormal which has a Positive
+        # constraint on all values.
+        for idx, prior in np.ndenumerate(self.media_cost_priors):
+            if prior > 0.0:
+                continue
+            if self.learned_media_priors.ndim == 1:
+                assert self.learned_media_priors[idx] > 0.0, (
+                    f"Media channel {self.media_names[idx[0]]} has a zero cost prior and no learned prior was specified. Make sure this channel's cost column has non-zero and non-NaN values."
+                )
+            elif self.learned_media_priors.ndim == 2:
+                assert np.all(self.learned_media_priors[idx] > 0.0), (
+                    f"Media channel {self.media_names[idx[0]]} has a zero cost prior and no learned prior was specified for all geos. Make sure this channel's cost column has non-zero and non-NaN values, or specify learned priors for all geos."
+                )
+            else:
+                raise AssertionError("learned_media_priors must be a 1D or 2D array.")
+
+        assert num_channels == len(self.media_names), (
+            f"{num_channels} {len(self.media_names)}"
+        )
+
+        num_extra_features = self.extra_features_data.shape[1]
+        if num_extra_features:
+            assert num_observations == self.extra_features_data.shape[0], (
+                f"{num_observations} {self.extra_features_data.shape[0]}"
+            )
+
+        assert num_extra_features == len(self.extra_features_names), (
+            f"{num_extra_features} {len(self.extra_features_names)}"
+        )
+
+        assert num_observations == self.target_data.shape[0], (
+            f"{num_observations} {self.target_data.shape[0]}"
+        )
+        assert np.float64 == self.target_data.dtype, (
+            f"{np.float64} {self.target_data.dtype}"
+        )
+
+        assert self.target_name
+
+        if self.geo_names is None:
+            assert 2 == self.media_data.ndim, f"{self.media_data.ndim}"
+            assert 2 == self.extra_features_data.ndim, (
+                f"{self.extra_features_data.ndim}"
+            )
+            assert 1 == self.target_data.ndim, f"{self.target_data.ndim}"
+        else:
+            assert 3 == self.media_data.ndim, f"{self.media_data.ndim}"
+            assert 3 == self.extra_features_data.ndim, (
+                f"{self.extra_features_data.ndim}"
+            )
+            assert len(self.geo_names) == self.media_data.shape[2], (
+                f"{self.geo_names} != {self.media_data.shape[2]}"
+            )
+            assert 2 == self.target_data.ndim, f"{self.target_data.ndim}"
 
     def dump(self, output_dir, suffix, verbose=False):
         """
