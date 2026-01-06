@@ -42,6 +42,16 @@ Media = TypedDict(
     {"effect": MediaMedians, "roi": MediaMedians, "cost_per_target": MediaMedians},
 )
 
+Summary = TypedDict(
+    "Summary",
+    {
+        "coefficients": Coefficients,
+        "fit_mape": float,
+        "media": Media,
+        "has_negative_baseline": bool,
+    },
+)
+
 
 def describe_input_data(input_data, results_dir, suffix):
     """
@@ -869,7 +879,7 @@ def describe_mmm_training(
     results_dir: str,
     include_response_curves=False,
     config: dict = None,
-) -> dict:
+) -> Summary:
     """
     Plot and print diagnostic analyses of the MMM training data.
 
