@@ -23,13 +23,16 @@ from impl.lightweight_mmm.lightweight_mmm.plot import (
     create_media_baseline_contribution_df,
 )
 
-from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seasonality
+from impl.lightweight_mmm.lightweight_mmm.media_transforms import (
+    calculate_seasonality,
+)
 
 from mmm.constants import constants
 from mmm.data.input_data import InputData
 from mmm.data.data_to_fit import DataToFit
 from mmm.outlier.outlier import print_outliers
 from mmm.plot.plot import plot_all_metrics
+from mmm.describe.response_curves import _extract_and_export_response_curves
 
 # Type hints
 Coefficients = TypedDict(
@@ -801,6 +804,11 @@ def _extract_and_dump_media(
         _plot_media(mmm, data_to_fit, results_dir, media_effect_hat, roi_hat, cost_per_target_hat)
     if include_response_curves:
         _plot_response_curves(mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data)
+
+    # Export response curve data as JSON (always, independent of include_response_curves)
+    _extract_and_export_response_curves(
+        mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data
+    )
 
     # Summarise global media results
     # Convert type from float32 to float so they're compatible with json
