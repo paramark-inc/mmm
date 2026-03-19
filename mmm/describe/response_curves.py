@@ -38,7 +38,7 @@ def _get_scaler_values(scaler, channel_idx: int | None, geo_idx: int | None):
     """Return (multiply_by, divide_by) as Python floats for a specific channel/geo.
 
     For media scalers, pass channel_idx (and geo_idx for geo models).
-    For target scalers, pass channel_idx=None and geo_idx (or None for national).
+    For target scalers, pass channel_idx=None and (optionally) geo_idx.
     """
     if scaler is None:
         return 1.0, 1.0
@@ -68,7 +68,7 @@ def _compute_adstock_carry_over(
     Uses the median lag_weight from the MCMC trace.
 
     Returns:
-        Array of shape (channels,) for national or (channels, geos) for geo models.
+        Array of shape (channels,) for non-hierarchical models or (channels, geos) for hierarchical models.
     """
     lag_weight_median = jnp.median(mmm.trace["lag_weight"], axis=0)  # (channels,)
     if mmm.media.ndim == 3:
@@ -139,7 +139,7 @@ def _build_channel_transform_params(
         mmm: Fitted model.
         data_to_fit: DataToFit instance.
         channel_idx: Channel index.
-        geo_idx: Geo index (None for national).
+        geo_idx: Geo index (None for non-hierarchical models).
         adstock_carry_over: Pre-computed adstock carry-over array (for
             adstock / hill_adstock models), or None for carryover models.
     """
@@ -166,6 +166,12 @@ def _build_channel_transform_params(
     }
 
     if model_name in ("adstock", "hill_adstock"):
+        if adstock_carry_over is None:
+            # without a none check here, mypy complains about adstock_carry_over[channel_idx] below
+            raise ValueError(
+                f"adstock_carry_over cannot be None for model type {model_name}"
+            )
+
         lag_weight_median = np.asarray(jnp.median(mmm.trace["lag_weight"], axis=0))
         if geo_idx is not None:
             carry_val = float(adstock_carry_over[channel_idx, geo_idx])
@@ -284,7 +290,7 @@ def _write_response_curves_json(
         else "response_curves.json"
     )
     with open(os.path.join(results_dir, filename), "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f)
 
 
 def _extract_and_export_response_curves(
@@ -301,8 +307,8 @@ def _extract_and_export_response_curves(
     - Closed-form parameters (using median trace values) for optimiser use
     - Piecewise linear curves (50 points) for visualisation
 
-    For national models, writes response_curves.json.
-    For geo models, writes response_curves_{geo_name}.json per geo.
+    For single-geo models, writes response_curves.json.
+    For hierarchical models, writes response_curves_{geo_name}.json per geo.
     """
     media = mmm.media
     media_scaler = data_to_fit.media_scaler
@@ -364,7 +370,7 @@ def _extract_and_export_response_curves(
     if mmm.model_name in ("adstock", "hill_adstock"):
         adstock_carry_over = _compute_adstock_carry_over(mmm)
 
-    # -- Build JSON per geo (or once for national) --
+    # -- Build JSON per geo --
 
     if media.ndim == 3:
         # Geo model: per-geo cost models, per-geo predictions
@@ -408,7 +414,7 @@ def _extract_and_export_response_curves(
                 results_dir, channels_data, mmm.model_name, geo_name=geo_name
             )
     else:
-        # National model
+        # Non-hierarchical model
         cost_models = _train_cost_models(
             media=(media_scaler.inverse_transform(media) if media_scaler else media),
             costs_per_day=costs_per_day_unscaled,
