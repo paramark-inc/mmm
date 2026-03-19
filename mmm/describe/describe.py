@@ -39,7 +39,9 @@ Coefficients = TypedDict(
     "Coefficients", {"intercept": float, "coef_trend": float, "expo_trend": float}
 )
 
-MediaMedians = TypedDict("MediaMedians", {"blended_median": float, "top_medians": list[float]})
+MediaMedians = TypedDict(
+    "MediaMedians", {"blended_median": float, "top_medians": list[float]}
+)
 Media = TypedDict(
     "Media",
     {"effect": MediaMedians, "roi": MediaMedians, "cost_per_target": MediaMedians},
@@ -155,7 +157,8 @@ def _get_summary_df(
 
     columns = [str(x) for x in ci_quantiles]
     summary_df = pd.DataFrame(
-        index=["blended"] + data_to_fit.media_names, columns=columns + ["median", "mean"]
+        index=["blended"] + data_to_fit.media_names,
+        columns=columns + ["median", "mean"],
     )
 
     if data_to_fit.geo_names is not None:
@@ -185,8 +188,12 @@ def _get_summary_df(
 
         for idx, column in enumerate(columns):
             summary_df.loc[media_name, column] = quantiles[idx]
-        summary_df.loc[media_name, "median"] = np.median(media_distributions_touse[:, media_idx])
-        summary_df.loc[media_name, "mean"] = np.mean(media_distributions_touse[:, media_idx])
+        summary_df.loc[media_name, "median"] = np.median(
+            media_distributions_touse[:, media_idx]
+        )
+        summary_df.loc[media_name, "mean"] = np.mean(
+            media_distributions_touse[:, media_idx]
+        )
 
     return summary_df
 
@@ -265,8 +272,10 @@ def _compute_blended_roi_hat(
     # total_cost_train_unscaled => array with dimensions [geo] for geo models or a scalar for
     # global models.  The values are the unscaled sum of media costs over the training period.
     # media_costs_by_row_train_unscaled has dims [time, channel, geo] or [time, channel]
-    media_costs_by_row_train_unscaled = data_to_fit.media_costs_scaler.inverse_transform(
-        data_to_fit.media_costs_by_row_train_scaled
+    media_costs_by_row_train_unscaled = (
+        data_to_fit.media_costs_scaler.inverse_transform(
+            data_to_fit.media_costs_by_row_train_scaled
+        )
     )
     total_cost_train_unscaled = media_costs_by_row_train_unscaled.sum(axis=(0, 1))
 
@@ -406,7 +415,9 @@ def get_baseline_breakdown_df(
     coef_trend = jnp.median(jnp.squeeze(media_mix_model.trace["coef_trend"]))
     expo_trend = jnp.median(media_mix_model.trace["expo_trend"])
     if data_to_fit.extra_features_train_scaled.shape[1]:
-        coef_extra_features = jnp.median(media_mix_model.trace["coef_extra_features"], axis=0)
+        coef_extra_features = jnp.median(
+            media_mix_model.trace["coef_extra_features"], axis=0
+        )
     else:
         coef_extra_features = None
     gamma_seasonality = jnp.median(media_mix_model.trace["gamma_seasonality"], axis=0)
@@ -444,7 +455,9 @@ def get_baseline_breakdown_df(
     if data_to_fit.extra_features_train_scaled.shape[1]:
         extra_features_einsum = "tf, f -> tf"  # t = time, f = feature
         extra_features_mult = jnp.einsum(
-            extra_features_einsum, data_to_fit.extra_features_train_scaled, coef_extra_features
+            extra_features_einsum,
+            data_to_fit.extra_features_train_scaled,
+            coef_extra_features,
         )
     else:
         extra_features_mult = None
@@ -456,7 +469,9 @@ def get_baseline_breakdown_df(
         if weekday is not None:
             data[i, columns.index("weekday")] = weekday[i % 7]
         for j in range(data_to_fit.extra_features_train_scaled.shape[1]):
-            data[i, columns.index(data_to_fit.extra_features_names[j])] = extra_features_mult[i, j]
+            data[i, columns.index(data_to_fit.extra_features_names[j])] = (
+                extra_features_mult[i, j]
+            )
 
     # TODO: this doesn't work for geo models because the scaler has one value per geo, and the
     # data array here has dimensions [time, baseline component].  Maybe adding a geo dimension to
@@ -481,7 +496,9 @@ def get_baseline_breakdown_df(
     )
     baseline_breakdown_df["chart_baseline_value"] = plot_df["baseline contribution"]
 
-    baseline_breakdown_df["date"] = pd.to_datetime(data_to_fit.date_strs[:num_observations])
+    baseline_breakdown_df["date"] = pd.to_datetime(
+        data_to_fit.date_strs[:num_observations]
+    )
     baseline_breakdown_df = baseline_breakdown_df.set_index("date")
 
     return baseline_breakdown_df
@@ -526,7 +543,9 @@ def _extract_and_dump_coefficients(
         return {}
 
 
-def _extract_and_plot_fit(mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str) -> float:
+def _extract_and_plot_fit(
+    mmm: LightweightMMM, data_to_fit: DataToFit, results_dir: str
+) -> float:
     """
     Extract and return the fit mape. Also plot the fit on a chart file.
 
@@ -559,7 +578,9 @@ def _extract_and_plot_fit(mmm: LightweightMMM, data_to_fit: DataToFit, results_d
         y_true = jnp.exp(y_true)
         y_pred = jnp.exp(y_pred)
 
-    mape = 100 * metrics.mean_absolute_percentage_error(y_true=y_true, y_pred=y_pred.mean(axis=0))
+    mape = 100 * metrics.mean_absolute_percentage_error(
+        y_true=y_true, y_pred=y_pred.mean(axis=0)
+    )
 
     return mape
 
@@ -656,7 +677,9 @@ def _plot_media(
         target_scaler=data_to_fit.target_scaler,
         channel_names=data_to_fit.media_names,
     )
-    output_fname = os.path.join(results_dir, "weekly_media_and_baseline_contribution.png")
+    output_fname = os.path.join(
+        results_dir, "weekly_media_and_baseline_contribution.png"
+    )
     fig.savefig(output_fname, bbox_inches="tight")
 
 
@@ -758,7 +781,9 @@ def _extract_and_dump_media(
         )
 
         # Write to CSVs
-        global_media_effect_df.to_csv(os.path.join(results_dir, "media_performance_effect.csv"))
+        global_media_effect_df.to_csv(
+            os.path.join(results_dir, "media_performance_effect.csv")
+        )
         global_roi_df.to_csv(os.path.join(results_dir, "media_performance_roi.csv"))
         global_cost_per_target_df.to_csv(
             os.path.join(results_dir, "media_performance_cost_per_target.csv")
@@ -794,21 +819,32 @@ def _extract_and_dump_media(
             geo_media_effect_df.to_csv(
                 os.path.join(results_dir, f"media_performance_effect_{geo_name}.csv")
             )
-            geo_roi_df.to_csv(os.path.join(results_dir, f"media_performance_roi_{geo_name}.csv"))
+            geo_roi_df.to_csv(
+                os.path.join(results_dir, f"media_performance_roi_{geo_name}.csv")
+            )
             geo_cost_per_target_df.to_csv(
-                os.path.join(results_dir, f"media_performance_cost_per_target_{geo_name}.csv")
+                os.path.join(
+                    results_dir, f"media_performance_cost_per_target_{geo_name}.csv"
+                )
             )
 
     # Plot media graphs
     if include_plot_media:
-        _plot_media(mmm, data_to_fit, results_dir, media_effect_hat, roi_hat, cost_per_target_hat)
+        _plot_media(
+            mmm,
+            data_to_fit,
+            results_dir,
+            media_effect_hat,
+            roi_hat,
+            cost_per_target_hat,
+        )
     if include_response_curves:
-        _plot_response_curves(mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data)
-
-    # Export response curve data as JSON (always, independent of include_response_curves)
-    _extract_and_export_response_curves(
-        mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data
-    )
+        _plot_response_curves(
+            mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data
+        )
+        _extract_and_export_response_curves(
+            mmm, data_to_fit, results_dir, costs_per_day_unscaled, input_data
+        )
 
     # Summarise global media results
     # Convert type from float32 to float so they're compatible with json
@@ -916,8 +952,6 @@ def describe_mmm_training(
     else:
         baseline = None
 
-
-
     summary = {
         "coefficients": coefficients,
         "fit_mape": fit_mape,
@@ -965,6 +999,3 @@ def describe_mmm_prediction(mmm, data_to_fit, results_dir):
         )
         output_fname = os.path.join(results_dir, "model_fit_out_of_sample.png")
         fig.savefig(output_fname, bbox_inches="tight")
-
-
-
