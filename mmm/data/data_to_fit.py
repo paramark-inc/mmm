@@ -397,21 +397,34 @@ class DataToFit:
             observation_data_by_column_name[self.target_name] = target_data_scaled
 
         # TODO push conversion to datetime upstream so that it is common across all data sets
+        dates = pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False)
+
         if self.time_granularity == constants.GRANULARITY_WEEKLY:
-            freq = "W"
+            weeks_prefix = "W"
         elif self.time_granularity == constants.GRANULARITY_TWO_WEEKS:
-            freq = "2W"
+            weeks_prefix = "2W"
         elif self.time_granularity == constants.GRANULARITY_FOUR_WEEKS:
-            freq = "4W"
+            weeks_prefix = "4W"
         elif self.time_granularity == constants.GRANULARITY_DAILY:
-            freq = "D"
+            weeks_prefix = None
         else:
             assert False
+
+        if weeks_prefix is None:
+            freq = "D"
+        else:
+            # Weekly grids are anchored to the configured end date rather than
+            # fixed to Sundays, so observations can fall on any day of week.
+            # Derive the anchored pandas alias from the actual dates — a bare
+            # "W" (= "W-SUN") would raise on non-Sunday dates.
+            day_abbrs = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+            anchor_day = day_abbrs[dates[0].weekday()] if len(dates) else "SUN"
+            freq = f"{weeks_prefix}-{anchor_day}"
 
         per_observation_df = pd.DataFrame(
             data=observation_data_by_column_name,
             index=pd.DatetimeIndex(
-                pd.to_datetime(self.date_strs, dayfirst=False, yearfirst=False),
+                dates,
                 freq=freq,
             ),
             dtype=np.float64,

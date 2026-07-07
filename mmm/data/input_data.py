@@ -556,8 +556,11 @@ class InputData:
 
         The data will be grouped into groups of N*7 rows, starting with the first 7 rows, and
         discarding the last group of less than N*7 rows.  This means that the groups are aligned
-        to the day of week for the first row, not necessarily Sunday.  So the caller should ensure
-        that the first day of the dataset is a Sunday.
+        to the day of week for the first row.  Weekly grids are anchored to the configured end
+        date (see internal-mmm's utils.dates), so the caller should ensure the dataset spans a
+        whole number of periods — i.e. the first day is a whole number of periods before
+        (end_date + 1 day) — otherwise days are silently trimmed off the END of the data.  The
+        lightweight_mmm driver aligns data_rows.start_date accordingly before parsing.
 
         Args:
             time_granularity: granularity we should resample to
