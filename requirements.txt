@@ -1,6 +1,6 @@
 # direct dependencies: utils for command line and config
 click==8.1.7
-GitPython==3.1.50
+GitPython==3.1.54
 msgpack==1.2.1
 msgpack-numpy==0.4.8
 PyYAML==6.0.1
