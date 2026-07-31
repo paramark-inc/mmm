@@ -134,11 +134,17 @@ def parse_csv_generic(
     data_fname: str,
     config: dict,
     geo_filter: str = None,
+    data_df: pd.DataFrame = None,
 ):
     """
-    :param data_fname: full path to file for raw data
+    :param data_fname: full path to file for raw data (ignored when data_df is given)
     :param config: config dictionary (from yaml file)
     :param geo_filter: geo to filter the data on, or None to parse data for all geos
+    :param data_df: optional pre-parsed DataFrame in the shape returned by
+        csv_to_df_generic (indexed by date, or [geo, date] for geo data). Callers
+        pass this to feed data they have already transformed — e.g. downsampled
+        from daily to weekly with a shared, grid-anchored resample — in which case
+        config's raw_data_granularity must describe the frame's actual granularity.
 
     :return: dict with format {
             KEY_GRANULARITY: granularity,
@@ -148,7 +154,8 @@ def parse_csv_generic(
               for a geo model: { geo: { metric_name: [ metric values ], ... } }
         }
     """
-    data_df = _parse_csv_shared(data_fname, config, geo_filter=geo_filter)
+    if data_df is None:
+        data_df = _parse_csv_shared(data_fname, config, geo_filter=geo_filter)
 
     has_geo_data = config.get("geo_col", None) and not geo_filter
 
