@@ -1,5 +1,6 @@
 from datetime import date
 import os
+import tempfile
 import unittest
 
 from base_driver.config import load_config
@@ -22,3 +23,11 @@ class ConfigTest(unittest.TestCase):
                 "end_date": date(year=2023, month=1, day=10),
             },
         )
+
+    def test_load_config_rejects_corrupt_nbsp(self):
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
+            f.write("foo \u00a0 bar")
+            f.flush()
+
+            with self.assertRaises(ValueError):
+                load_config(f.name)
