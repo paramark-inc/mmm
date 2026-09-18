@@ -25,7 +25,7 @@ class ConfigTest(unittest.TestCase):
         )
 
     def test_load_config_rejects_corrupt_nbsp(self):
-        with tempfile.NamedTemporaryFile(mode="w", delete_on_close=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w") as f:
             f.write(
                 "media:\n"
                 "- display_name: Meta\n"
