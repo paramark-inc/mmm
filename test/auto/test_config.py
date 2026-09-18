@@ -25,13 +25,9 @@ class ConfigTest(unittest.TestCase):
         )
 
     def test_load_config_rejects_corrupt_nbsp(self):
-        with tempfile.NamedTemporaryFile(mode="w") as f:
-            f.write(
-                "media:\n"
-                "- display_name: Meta\n"
-                "  priors: null\n"
-                "    contribution_m: null\n"
-            )
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
+            f.write("foo \u00a0 bar")
+            f.flush()
 
             with self.assertRaises(ValueError):
                 load_config(f.name)
