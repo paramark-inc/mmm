@@ -3,6 +3,7 @@ from impl.lightweight_mmm.lightweight_mmm.utils import get_time_seed
 
 from mmm.constants import constants
 from mmm.data import DataToFit
+from mmm.fit.calibration import build_calibration, to_model_calibration
 
 import jax.numpy as jnp
 import numpyro
@@ -101,6 +102,12 @@ def fit_lightweight_mmm(
     else:
         fit_params["seed"] = get_time_seed()
 
+    calibration_entries = build_calibration(config, data_to_fit)
+    if calibration_entries:
+        fit_params["calibration"] = [e.to_dict() for e in calibration_entries]
+        for entry in fit_params["calibration"]:
+            print(f"calibration={entry}")
+
     with open(os.path.join(results_dir, "fit_params.yaml"), "w") as output_file:
         yaml.dump(fit_params, output_file, default_flow_style=False)
 
@@ -160,6 +167,7 @@ def fit_lightweight_mmm(
 
     # remove parameter(s) that we want to write, but don't pass directly to fit()
     del fit_params["model_name"], fit_params["custom_priors"]
+    fit_params.pop("calibration", None)
 
     # If you hit "RuntimeError: Cannot find valid initial parameters. Please
     # check your model again." while fitting the model, and are running on x64, consider trying
@@ -173,6 +181,9 @@ def fit_lightweight_mmm(
         extra_features=extra_features,
         target=data_to_fit.target_train_scaled,
         custom_priors=custom_priors,
+        calibration=(
+            to_model_calibration(calibration_entries, data_to_fit) if calibration_entries else None
+        ),
         **fit_params,
     )
 
