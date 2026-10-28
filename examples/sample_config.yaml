@@ -37,6 +37,16 @@ weekday_seasonality: null
 #     loc: 0
 #     scale: 1
 
+# This example calibrates "Ad Platform 1" to a geo test that measured $18-$27 per
+# incremental target unit between 2023-02-05 and 2023-03-18 (see docs/config.md).
+# calibration:
+#   - channels: [Ad Platform 1]
+#     start_date: 2023-02-05
+#     end_date: 2023-03-18
+#     cpic_low: 18
+#     cpic_high: 27
+#     interval: 0.9
+
 ################################
 # Data handling options
 ################################
