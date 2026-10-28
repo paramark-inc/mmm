@@ -28,6 +28,7 @@ from impl.lightweight_mmm.lightweight_mmm.media_transforms import calculate_seas
 from mmm.constants import constants
 from mmm.data.input_data import InputData
 from mmm.data.data_to_fit import DataToFit
+from mmm.fit.calibration import build_calibration
 from mmm.outlier.outlier import print_outliers
 from mmm.plot.plot import plot_all_metrics
 
@@ -871,6 +872,49 @@ def _extract_and_dump_baseline(
     return baseline_breakdown_df
 
 
+def get_calibration_check_df(
+    mmm: LightweightMMM, data_to_fit: DataToFit, config: dict
+) -> pd.DataFrame | None:
+    """
+    Compare each calibration experiment's CPIC range with the model's CPIC over the same window.
+
+    :param mmm: LightweightMMM instance
+    :param data_to_fit: DataToFit instance
+    :param config: Configuration dictionary containing model settings
+    :return: one row per experiment, or None when the config has no calibration
+    """
+    entries = build_calibration(config or {}, data_to_fit)
+    if not entries or "calibration_model_lift" not in mmm.trace:
+        return None
+
+    # calibration_model_lift has dimensions [sample, experiment] in scaled target units
+    model_lift = np.asarray(
+        data_to_fit.target_scaler.inverse_transform(mmm.trace["calibration_model_lift"])
+    )
+    q_low, q_high = data_to_fit.get_ci_quantiles()
+
+    rows = []
+    for idx, entry in enumerate(entries):
+        cpic = entry.window_spend / model_lift[:, idx]
+        rows.append(
+            {
+                "channels": ", ".join(entry.channels),
+                "start_date": entry.start_date.isoformat(),
+                "end_date": entry.end_date.isoformat(),
+                "window_spend": entry.window_spend,
+                "experiment_cpic_low": entry.cpic_low,
+                "experiment_cpic_high": entry.cpic_high,
+                "interval": entry.interval,
+                f"model_cpic_{q_low}": float(np.quantile(cpic, q_low)),
+                "model_cpic_median": float(np.median(cpic)),
+                f"model_cpic_{q_high}": float(np.quantile(cpic, q_high)),
+                "model_lift_median": float(np.median(model_lift[:, idx])),
+                "experiment_lift_mean": entry.lift_mean,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def describe_mmm_training(
     mmm: LightweightMMM,
     input_data: InputData,
@@ -908,7 +952,9 @@ def describe_mmm_training(
     else:
         baseline = None
 
-
+    calibration_check_df = get_calibration_check_df(mmm, data_to_fit, config)
+    if calibration_check_df is not None:
+        calibration_check_df.to_csv(os.path.join(results_dir, "calibration_check.csv"), index=False)
 
     summary = {
         "coefficients": coefficients,

@@ -10,6 +10,16 @@ To run MMM, you'll need to create a `yaml` config file with the following parame
 * `weekday_seasonality`: (optional) controls how the model handles day of week changes. Use `null` to automatically derive the value from the time_granularity, `true` to generate day of week coefficients for daily data, `false` to omit day of week coefficients, which can be preferable if you are seeing too much day to day swing in the results. For weekly data, set this to null. Defaults to null.
 * `seed`: (optional) fixed seed for random numbers in the MCMC process. When this isn't set, a new seed is generated each time, so model coefficients will be slightly different even for the same data. Note that JAX [uses seeds differently to numpy](https://jax.readthedocs.io/en/latest/jax-101/05-random-numbers.html).
 * `custom_priors`: (optional) Bayesian priors for model parameters. You might set these if you have other data, like experimental results, that give you a prior belief for the distribution of a parameter. See [lightweight_mmm's doc on custom priors](https://lightweight-mmm.readthedocs.io/en/latest/custom_priors.html).
+* `calibration`: (optional) calibrate the model to experiment results. Each entry gives the cost per incremental target unit (CPIC) that an experiment measured for one or more channels over a window, and the model adds a likelihood term pulling those channels' summed contribution in that window toward the measured lift (`spend in window / CPIC`). This can move a channel's attribution in either direction, which `learned_prior` and `fixed_cost_prior` cannot: they only set the scale of a zero-centred `HalfNormal`. The window must overlap the training rows, and the channels must have spend in it. National models only, and not with `log_scale_target`. Each run writes the resolved entries to `fit_params.yaml` and compares the model's CPIC in the window against the experiment's range in `calibration_check.csv`.
+  ```yaml
+  calibration:
+    - channels: [OTT]          # media display_names; their contributions are summed
+      start_date: 2026-07-27   # experiment window, inclusive
+      end_date: 2026-09-27
+      cpic_low: 1880           # cost per incremental target unit, low end
+      cpic_high: 2700          # high end
+      interval: 0.9            # probability the true CPIC is in the range (default 0.9)
+  ```
 * `progress_bar`: (optional) Whether to show a progress bar during model sampling. [numpyro's docs](https://num.pyro.ai/en/stable/mcmc.html#numpyro.infer.mcmc.MCMC) suggest that setting to false may improve runtime but consume more memory. Default false.
 * `log_scale_target`: experimental feature.  Should be set to `false`.
 * `raw_data_granularity`: `daily` if your CSV has one row per day; `weekly` if it has one row per week.
