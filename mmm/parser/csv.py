@@ -115,17 +115,18 @@ def _parse_csv_shared(
                 )
 
     # Now that we have filtered down to the desired date range, we can enforce that the
-    # dataset has all days between start and end.  Setting the frequency on the index
-    # enforces this constraint.
+    # dataset has all periods between start and end. Seven-day spacing allows any
+    # weekly anchor without inferring a frequency that could hide missing periods.
+    frequency = "7D" if config.get("raw_data_granularity") == constants.GRANULARITY_WEEKLY else "D"
     if data_df.index.nlevels > 1:
         # Geo dataset -> date is at level[1]
         # We need to call remove_unused_levels() because for MultiIndex, deleted keys
         # remain in the index until you refresh it with this call.
         data_df.index = data_df.index.remove_unused_levels()
-        data_df.index.levels[1].freq = "D"
+        data_df.index.levels[1].freq = frequency
     else:
         # National dataset
-        data_df.index.freq = "D"
+        data_df.index.freq = frequency
 
     return data_df
 
